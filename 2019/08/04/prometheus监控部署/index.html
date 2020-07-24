@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-CN">
+
+
+<head>
+  <meta charset="utf-8" />
+    
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>
+    prometheus+grafana监控部署 |  自在技术博客
+  </title>
+  <meta name="generator" content="hexo-theme-ayer">
+  
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" href="/dist/main.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css">
+  <link rel="stylesheet" href="/css/custom.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+  
+  
+
+  
+
+</head>
+
+</html>
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article id="post-prometheus监控部署" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  prometheus+grafana监控部署
+</h1>
+ 
+
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2019/08/04/prometheus监控部署/" class="article-date">
+  <time datetime="2019-08-04T03:00:00.000Z" itemprop="datePublished">2019-08-04</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/监控/">监控</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> 字数统计:</span>
+            <span class="post-count">1.1k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> 阅读时长≈</span>
+            <span class="post-count">5 分钟</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <h1 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h1><p>Prometheus是一个开源监控系统，它前身是SoundCloud的警告工具包。从2012年开始，许多公司和组织开始使用Prometheus。该项目的开发人员和用户社区非常活跃，越来越多的开发人员和用户参与到该项目中。目前它是一个独立的开源项目，且不依赖与任何公司。为了强调这点和明确该项目治理结构，Prometheus在2016年继Kurberntes之后，加入了Cloud Native Computing Foundation。</p>
+<h1 id="安装步骤"><a href="#安装步骤" class="headerlink" title="安装步骤"></a>安装步骤</h1><p>监控机安装：192.168.1.24</p>
+<ol>
+<li>安装prometheus，监控服务</li>
+<li>安装node-exporter，节点数据收集服务</li>
+<li>安装alertmanager，报警服务</li>
+<li>安装grafana，图形化展示服务</li>
+</ol>
+<h2 id="一、监控机安装prometheus"><a href="#一、监控机安装prometheus" class="headerlink" title="一、监控机安装prometheus"></a>一、监控机安装prometheus</h2><h3 id="1、安装命令"><a href="#1、安装命令" class="headerlink" title="1、安装命令"></a>1、安装命令</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 下载</span></span><br><span class="line">wget https://github.com/prometheus/prometheus/releases/download/v2.12.0/prometheus-2.12.0.linux-amd64.tar.gz</span><br><span class="line"></span><br><span class="line">tar xf prometheus-2.12.0.linux-amd64.tar.gz</span><br><span class="line"><span class="built_in">cd</span> prometheus-2.12.0.linux-amd64</span><br><span class="line"></span><br><span class="line"><span class="comment"># 根据下面yml配置文件配置需要信息</span></span><br><span class="line">vim prometheus.yml</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启动</span></span><br><span class="line">nohup ./prometheus --config.file=./prometheus.yml &amp;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 访问prometheus</span></span><br><span class="line">http://192.168.1.24:9090</span><br></pre></td></tr></table></figure>
+
+<h3 id="2、配置修改：vim-prometheus-yml"><a href="#2、配置修改：vim-prometheus-yml" class="headerlink" title="2、配置修改：vim prometheus.yml"></a>2、配置修改：vim prometheus.yml</h3><figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">global:</span></span><br><span class="line">  <span class="comment"># 每隔15秒向pushgateway采集一次指标数据</span></span><br><span class="line"><span class="attr">  scrape_interval:</span>    <span class="number">15</span><span class="string">s</span> </span><br><span class="line">  <span class="comment"># 每隔15秒根据所配置的规则集，进行规则计算</span></span><br><span class="line"><span class="attr">  evaluation_interval:</span> <span class="number">15</span><span class="string">s</span> </span><br><span class="line"></span><br><span class="line"><span class="attr">alerting:</span></span><br><span class="line"><span class="attr">  alertmanagers:</span></span><br><span class="line"><span class="attr">  - static_configs:</span></span><br><span class="line">  <span class="comment"># 设置altermanager的地址，altermanager报警规则服务</span></span><br><span class="line"><span class="attr">    - targets:</span> <span class="string">['192.168.1.24:9093']</span></span><br><span class="line"></span><br><span class="line">  <span class="comment"># 指定所配置报价模板文件，下面给出模板配置</span></span><br><span class="line"><span class="attr">rule_files:</span></span><br><span class="line"><span class="bullet">  -</span> <span class="string">"rules.yml"</span></span><br><span class="line"></span><br><span class="line"><span class="attr">scrape_configs:</span></span><br><span class="line">  <span class="comment"># 用于获取被控主机数据，可以添加多条</span></span><br><span class="line"><span class="attr">  - job_name:</span> <span class="string">'测试-25'</span></span><br><span class="line"><span class="attr">    static_configs:</span></span><br><span class="line"><span class="attr">    - targets:</span> <span class="string">['192.168.1.25:9100']</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3、rules-yml报警模板配置"><a href="#3、rules-yml报警模板配置" class="headerlink" title="3、rules.yml报警模板配置"></a>3、rules.yml报警模板配置</h3><figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">groups:</span></span><br><span class="line"><span class="attr">- name:</span> <span class="string">down</span></span><br><span class="line"><span class="attr">  rules:</span></span><br><span class="line"><span class="attr">  - alert:</span> <span class="string">"down报警"</span></span><br><span class="line"><span class="attr">    expr:</span> <span class="string">up</span> <span class="string">==</span> <span class="number">0</span></span><br><span class="line"><span class="attr">    for:</span> <span class="number">1</span><span class="string">m</span></span><br><span class="line"><span class="attr">    labels:</span></span><br><span class="line"><span class="attr">      severity:</span> <span class="string">warning</span></span><br><span class="line"><span class="attr">    annotations:</span></span><br><span class="line"><span class="attr">      summary:</span> <span class="string">"down报警"</span></span><br><span class="line"><span class="attr">      description:</span> <span class="string">"报警时间:"</span></span><br><span class="line"><span class="attr">      value:</span> <span class="string">"已使用：<span class="template-variable">&#123;&#123; $value &#125;&#125;</span>"</span></span><br><span class="line"><span class="attr">- name:</span> <span class="string">memory</span></span><br><span class="line"><span class="attr">  rules:</span></span><br><span class="line"><span class="attr">  - alert:</span> <span class="string">"内存报警"</span></span><br><span class="line"><span class="attr">    expr:</span> <span class="string">((node_memory_MemTotal_bytes</span> <span class="bullet">-(node_memory_MemFree_bytes+node_memory_Buffers_bytes+node_memory_Cached_bytes)</span> <span class="string">)/node_memory_MemTotal_bytes</span> <span class="string">)</span> <span class="string">*</span> <span class="number">100</span> <span class="string">&gt; 90</span></span><br><span class="line"><span class="string"></span><span class="attr">    for:</span> <span class="number">1</span><span class="string">m</span></span><br><span class="line"><span class="attr">    labels:</span></span><br><span class="line"><span class="attr">      severity:</span> <span class="string">warning</span></span><br><span class="line"><span class="attr">    annotations:</span></span><br><span class="line"><span class="attr">      summary:</span> <span class="string">"内存报警"</span></span><br><span class="line"><span class="attr">      description:</span> <span class="string">"报警时间:"</span></span><br><span class="line"><span class="attr">      value:</span> <span class="string">"已使用：<span class="template-variable">&#123;&#123; $value &#125;&#125;</span>%"</span></span><br><span class="line"><span class="attr">- name:</span> <span class="string">cpu</span></span><br><span class="line"><span class="attr">  rules:</span></span><br><span class="line"><span class="attr">  - alert:</span> <span class="string">"cpu报警"</span></span><br><span class="line"><span class="attr">    expr:</span> <span class="number">100</span> <span class="bullet">-</span> <span class="string">((avg</span> <span class="string">by</span> <span class="string">(instance,job,env)(irate(node_cpu_seconds_total&#123;mode="idle"&#125;[30s])))</span> <span class="string">*100)</span> <span class="string">&gt; 90</span></span><br><span class="line"><span class="string"></span><span class="attr">    for:</span> <span class="number">1</span><span class="string">m</span></span><br><span class="line"><span class="attr">    labels:</span></span><br><span class="line"><span class="attr">      severity:</span> <span class="string">warning</span></span><br><span class="line"><span class="attr">    annotations:</span></span><br><span class="line"><span class="attr">      summary:</span> <span class="string">"cpu报警"</span></span><br><span class="line"><span class="attr">      description:</span> <span class="string">"报警时间:"</span></span><br><span class="line"><span class="attr">      value:</span> <span class="string">"已使用：<span class="template-variable">&#123;&#123; $value &#125;&#125;</span>%"</span></span><br><span class="line"><span class="attr">- name:</span> <span class="string">disk</span></span><br><span class="line"><span class="attr">  rules:</span></span><br><span class="line"><span class="attr">  - alert:</span> <span class="string">"disk报警"</span></span><br><span class="line"><span class="attr">    expr:</span> <span class="number">100</span> <span class="bullet">-</span> <span class="string">(node_filesystem_avail_bytes&#123;fstype</span> <span class="string">!~</span> <span class="string">"nfs|rpc_pipefs|rootfs|tmpfs"</span><span class="string">,device!~"/etc/auto.misc|/dev/mapper/centos-home",mountpoint</span> <span class="string">!~</span> <span class="string">"/boot|/net|/selinux"</span><span class="string">&#125;</span> <span class="string">/node_filesystem_size_bytes&#123;fstype</span> <span class="string">!~</span> <span class="string">"nfs|rpc_pipefs|rootfs|tmpfs"</span><span class="string">,device!~"/etc/auto.misc|/dev/mapper/centos-home",mountpoint</span> <span class="string">!~</span> <span class="string">"/boot|/net|/selinux"</span><span class="string">&#125;</span> <span class="string">)</span> <span class="string">*</span> <span class="number">100</span>  <span class="string">&gt; 80</span></span><br><span class="line"><span class="string"></span><span class="attr">    for:</span> <span class="number">1</span><span class="string">m</span></span><br><span class="line"><span class="attr">    labels:</span></span><br><span class="line"><span class="attr">      severity:</span> <span class="string">warning</span></span><br><span class="line"><span class="attr">    annotations:</span></span><br><span class="line"><span class="attr">      summary:</span> <span class="string">"disk报警"</span></span><br><span class="line"><span class="attr">      description:</span> <span class="string">"报警时间:"</span></span><br><span class="line"><span class="attr">      value:</span> <span class="string">"已使用：<span class="template-variable">&#123;&#123; $value &#125;&#125;</span>%"</span></span><br><span class="line"><span class="attr">- name:</span> <span class="string">net</span></span><br><span class="line"><span class="attr">  rules:</span></span><br><span class="line"><span class="attr">  - alert:</span> <span class="string">"net报警"</span></span><br><span class="line"><span class="attr">    expr:</span> <span class="string">(irate(node_network_transmit_bytes_total&#123;device!~"lo"&#125;[1m])</span> <span class="string">/</span> <span class="number">1000</span><span class="string">)</span> <span class="string">&gt; 80000</span></span><br><span class="line"><span class="string"></span><span class="attr">    for:</span> <span class="number">1</span><span class="string">m</span></span><br><span class="line"><span class="attr">    labels:</span></span><br><span class="line"><span class="attr">      severity:</span> <span class="string">warning</span></span><br><span class="line"><span class="attr">    annotations:</span></span><br><span class="line"><span class="attr">      summary:</span> <span class="string">"net报警"</span></span><br><span class="line"><span class="attr">      description:</span> <span class="string">"报警时间:"</span></span><br><span class="line"><span class="attr">      value:</span> <span class="string">"已使用：<span class="template-variable">&#123;&#123; $value &#125;&#125;</span>KB"</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="二、监控机安装node-exporter"><a href="#二、监控机安装node-exporter" class="headerlink" title="二、监控机安装node-exporter"></a>二、监控机安装node-exporter</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 下载</span></span><br><span class="line">wget https://github.com/prometheus/node_exporter/releases/download/v0.18.1/node_exporter-0.18.1.linux-amd64.tar.gz</span><br><span class="line"></span><br><span class="line">tar xf node_exporter-0.18.1.linux-amd64.tar.gz</span><br><span class="line"><span class="built_in">cd</span> node_exporter-0.18.1.linux-amd64</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启动</span></span><br><span class="line">nohup ./node_exporter &amp;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 访问</span></span><br><span class="line">http://192.168.1.24:9100</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、监控机安装alertmanager"><a href="#三、监控机安装alertmanager" class="headerlink" title="三、监控机安装alertmanager"></a>三、监控机安装alertmanager</h2><h3 id="1、安装命令-1"><a href="#1、安装命令-1" class="headerlink" title="1、安装命令"></a>1、安装命令</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 下载</span></span><br><span class="line">wget https://github.com/prometheus/alertmanager/releases/download/v0.19.0/alertmanager-0.19.0.linux-amd64.tar.gz</span><br><span class="line"></span><br><span class="line">tar xf alertmanager-0.19.0.linux-amd64.tar.gz</span><br><span class="line"><span class="built_in">cd</span> alertmanager-0.19.0.linux-amd64</span><br><span class="line"></span><br><span class="line"><span class="comment"># 修改配置，下面给出配置信息</span></span><br><span class="line">vim alertmanager.yml</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启动</span></span><br><span class="line">nohup ./alertmanager --config.file=./alertmanager.yml &amp;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 访问</span></span><br><span class="line">http://192.168.1.24:9093</span><br></pre></td></tr></table></figure>
+
+<h3 id="2、alertmanager-yml报警规则配置"><a href="#2、alertmanager-yml报警规则配置" class="headerlink" title="2、alertmanager.yml报警规则配置"></a>2、alertmanager.yml报警规则配置</h3><p>以下是邮箱报警配置：</p>
+<figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">global:</span></span><br><span class="line">  <span class="comment">#处理超时时间，默认为5min</span></span><br><span class="line"><span class="attr">  resolve_timeout:</span> <span class="number">5</span><span class="string">m</span>   </span><br><span class="line">  <span class="comment"># 邮箱smtp服务器代理</span></span><br><span class="line"><span class="attr">  smtp_smarthost:</span> <span class="string">'smtp.163.com:25'</span>   </span><br><span class="line">  <span class="comment"># 发送邮箱名称</span></span><br><span class="line"><span class="attr">  smtp_from:</span> <span class="string">'hxqxiaoqi1990@163.com'</span>    </span><br><span class="line">  <span class="comment"># 邮箱名称</span></span><br><span class="line"><span class="attr">  smtp_auth_username:</span> <span class="string">'hxqxiaoqi1990@163.com'</span>   </span><br><span class="line">  <span class="comment"># 邮箱密码或授权码</span></span><br><span class="line"><span class="attr">  smtp_auth_password:</span> <span class="string">'Hxq7996026'</span>      </span><br><span class="line"><span class="attr">  smtp_require_tls:</span> <span class="literal">false</span></span><br><span class="line"></span><br><span class="line"><span class="attr">route:</span></span><br><span class="line">  <span class="comment"># 报警分组依据</span></span><br><span class="line"><span class="attr">  group_by:</span> <span class="string">['alertname']</span>       </span><br><span class="line">  <span class="comment"># 最初即第一次等待多久时间发送一组警报的通知</span></span><br><span class="line"><span class="attr">  group_wait:</span> <span class="number">10</span><span class="string">s</span>       </span><br><span class="line">  <span class="comment"># 在发送新警报前的等待时间</span></span><br><span class="line"><span class="attr">  group_interval:</span> <span class="number">1</span><span class="string">h</span>    </span><br><span class="line">  <span class="comment"># 发送重复警报的周期 对于email配置中，此项不可以设置过低，否则将会由于邮件发送太多频繁，被smtp服务器拒绝</span></span><br><span class="line"><span class="attr">  repeat_interval:</span> <span class="number">1</span><span class="string">h</span>   </span><br><span class="line">  <span class="comment"># 发送警报的接收者的名称，以下receivers name的名称</span></span><br><span class="line"><span class="attr">  receiver:</span> <span class="string">'mail'</span>      </span><br><span class="line"><span class="attr">receivers:</span></span><br><span class="line"><span class="attr">- name:</span> <span class="string">'mail'</span></span><br><span class="line"><span class="attr">  email_configs:</span></span><br><span class="line"><span class="attr">  - to:</span> <span class="string">'hxqxiaoqi1990@163.com'</span></span><br><span class="line"><span class="attr">inhibit_rules:</span></span><br><span class="line"><span class="attr">  - source_match:</span></span><br><span class="line"><span class="attr">      severity:</span> <span class="string">'critical'</span></span><br><span class="line"><span class="attr">    target_match:</span></span><br><span class="line"><span class="attr">      severity:</span> <span class="string">'warning'</span></span><br><span class="line"><span class="attr">    equal:</span> <span class="string">['alertname',</span> <span class="string">'dev'</span><span class="string">,</span> <span class="string">'instance'</span><span class="string">]</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="四、监控机安装grafana"><a href="#四、监控机安装grafana" class="headerlink" title="四、监控机安装grafana"></a>四、监控机安装grafana</h2><h3 id="1、安装命令-2"><a href="#1、安装命令-2" class="headerlink" title="1、安装命令"></a>1、安装命令</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">wget https://dl.grafana.com/oss/release/grafana-6.3.5.linux-amd64.tar.gz </span><br><span class="line"></span><br><span class="line">tar xf grafana-6.3.5.linux-amd64.tar.gz </span><br><span class="line"><span class="built_in">cd</span> grafana-6.3.5.linux-amd64</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启动</span></span><br><span class="line">nohup ./alertmanager --config.file=./alertmanager.yml &amp;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 访问</span></span><br><span class="line">http://192.168.1.24:3000</span><br></pre></td></tr></table></figure>
+
+<h3 id="2、添加数据源"><a href="#2、添加数据源" class="headerlink" title="2、添加数据源"></a>2、添加数据源</h3><p>1.在设置中：Configuration–&gt;Date Sources<br>2.配置prometheus服务信息：<a href="http://192.168.1.24:9090" target="_blank" rel="noopener">http://192.168.1.24:9090</a></p>
+<h3 id="3、添加仪表盘"><a href="#3、添加仪表盘" class="headerlink" title="3、添加仪表盘"></a>3、添加仪表盘</h3><p>1.在创建中：Create–&gt;Import<br>2.去下载：<a href="https://grafana.com/grafana/dashboards" target="_blank" rel="noopener">https://grafana.com/grafana/dashboards</a> 或复制模板ID号<br>3.填写ID号，或上传仪表盘模板</p>
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>版权声明： </strong>
+          本博客所有文章除特别声明外，著作权归作者所有。转载请注明出处！
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://hxqxiaoqi.gitee.io/2019/08/04/prometheus监控部署/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/prometheus/">prometheus</a></li></ul>
+
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2019/08/08/elasticsearch-6.6.1安装/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            elasticsearch安装
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2019/08/01/局域网DNS搭建与使用/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">局域网DNS搭建与使用</div>
+      </a>
+    
+  </nav>
+
+  
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2015-2020
+        <i class="ri-heart-fill heart_icon"></i> 自在
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        
+        由 <a href="https://hexo.io" target="_blank">Hexo</a> 强力驱动
+        <span class="division">|</span>
+        主题 - <a href="https://github.com/Shen-Yu/hexo-theme-ayer" target="_blank">Ayer</a>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>访问人数:<span id="busuanzi_value_site_uv"></span>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>浏览次数:<span id="busuanzi_value_page_pv"></span></span>
+</span></span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+        <script type="text/javascript" src="https://s9.cnzz.com/z_stat.php?id=1278069914&amp;web_id=1278069914"></script>
+        
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="自在技术博客"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags/友情链接/">链接</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search" title="搜索">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <script>
+      if (window.matchMedia("(max-width: 768px)").matches) {
+        document.querySelector('.content').classList.remove('on');
+        document.querySelector('.sidebar').classList.remove('on');
+      }
+    </script>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    <script src="/js/jquery-2.0.3.min.js"></script>
+<script src="/js/lazyload.min.js"></script>
+<!-- Tocbot -->
+
+<script src="/js/tocbot.min.js"></script>
+<script>
+  tocbot.init({
+    tocSelector: '.tocbot',
+    contentSelector: '.article-entry',
+    headingSelector: 'h1, h2, h3, h4, h5, h6',
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: 'main',
+    positionFixedSelector: '.tocbot',
+    positionFixedClass: 'is-position-fixed',
+    fixedSidebarOffset: 'auto'
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css">
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+<script src="/dist/main.js"></script>
+<!-- ImageViewer -->
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script>
+
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+
+<link rel="stylesheet" href="/css/clipboard.css">
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+
+
+<!-- CanvasBackground -->
+
+
+    
+  </div>
+</body>
+
+</html>

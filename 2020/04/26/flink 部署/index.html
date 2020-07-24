@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-CN">
+
+
+<head>
+  <meta charset="utf-8" />
+    
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>
+    flink 部署 |  自在技术博客
+  </title>
+  <meta name="generator" content="hexo-theme-ayer">
+  
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" href="/dist/main.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css">
+  <link rel="stylesheet" href="/css/custom.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+  
+  
+
+  
+
+</head>
+
+</html>
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article id="post-flink 部署" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  flink 部署
+</h1>
+ 
+
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2020/04/26/flink 部署/" class="article-date">
+  <time datetime="2020-04-26T05:00:00.000Z" itemprop="datePublished">2020-04-26</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/大数据/">大数据</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> 字数统计:</span>
+            <span class="post-count">2.4k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> 阅读时长≈</span>
+            <span class="post-count">10 分钟</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <h1 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h1><p><font color="32CD32">Flink</font> 是新的stream计算引擎，用java实现。既可以处理stream data也可以处理batch data，可以同时兼顾Spark以及Spark streaming的功能，与Spark不同的是，Flink本质上只有stream的概念，batch被认为是special stream。Flink在运行中主要有三个组件组成，JobClient，JobManager 和 TaskManager</p>
+<p>用户首先提交Flink程序到JobClient，经过JobClient的处理、解析、优化提交到JobManager，最后由TaskManager运行task。</p>
+<h1 id="组件说明"><a href="#组件说明" class="headerlink" title="组件说明"></a>组件说明</h1><p><font color="32CD32">JobManager</font></p>
+<p>JobManager是一个进程，主要负责申请资源，协调以及控制整个job的执行过程，具体包括，调度任务、处理checkpoint、容错等等，在接收到JobClient提交的执行计划之后，针对收到的执行计划，继续解析，因为JobClient只是形成一个operaor层面的执行计划，所以JobManager继续解析执行计划（根据算子的并发度，划分task），形成一个可以被实际调度的由task组成的拓扑图，最后向集群申请资源，一旦资源就绪，就调度task到TaskManager。</p>
+<p><font color="32CD32">TaskManager</font></p>
+<p>TaskManager是一个进程，及一个JVM（Flink用java实现）。主要作用是接收并执行JobManager发送的task，并且与JobManager通信，反馈任务状态信息，比如任务分执行中，执行完等状态，上文提到的checkpoint的部分信息也是TaskManager反馈给JobManager的。如果说JobManager是master的话，那么TaskManager就是worker主要用来执行任务。在TaskManager内可以运行多个task。多个task运行在一个JVM内有几个好处，首先task可以通过多路复用的方式TCP连接，其次task可以共享节点之间的心跳信息，减少了网络传输。TaskManager并不是最细粒度的概念，每个TaskManager像一个容器一样，包含一个多或多个Slot。</p>
+<p><font color="32CD32">Slot</font></p>
+<p>Slot是TaskManager资源粒度的划分，每个Slot都有自己独立的内存。所有Slot平均分配TaskManger的内存，比如TaskManager分配给Solt的内存为8G，两个Slot，每个Slot的内存为4G，四个Slot，每个Slot的内存为2G，值得注意的是，Slot仅划分内存，不涉及cpu的划分。同时Slot是Flink中的任务执行器（类似Storm中Executor），每个Slot可以运行多个task，而且一个task会以单独的线程来运行。</p>
+<p><font color="32CD32">ResourceManager</font></p>
+<p>ResourceManager主要负责管理任务管理器（TaskManager）的插槽（slot），Slot时Flink定义的处理资源单元；ResourceManager将有空闲插槽的TaskManager分配给JobManager。如果ResourceManager没有足够的插槽来满足JobManager的请求，它可以向资源提供平台发起会话，以提供启动TaskManager进程的容器。</p>
+<h1 id="flink-部署"><a href="#flink-部署" class="headerlink" title="flink 部署"></a>flink 部署</h1><p>Flink 有三种部署模式，分别是 Local、Standalone Cluster 和 Yarn Cluster。</p>
+<ul>
+<li>Local 单机模式，适合用于实验环境</li>
+<li>Standalone Cluster 集群模式，适合用于测试环境，配合zk和hdfs，可部署高可用模式，可用于生产环境</li>
+<li>Yarn Cluster 基于hadoop Yarn 组件进行部署，支持高可用，适合用于生产环境</li>
+</ul>
+<h2 id="Local-模式"><a href="#Local-模式" class="headerlink" title="Local 模式"></a>Local 模式</h2><ol>
+<li>安装jdk</li>
+<li>下载包解压</li>
+<li>直接运行即可</li>
+</ol>
+<h2 id="Standalone-模式"><a href="#Standalone-模式" class="headerlink" title="Standalone 模式"></a>Standalone 模式</h2><p><font color="32CD32">实验环境</font></p>
+<table>
+<thead>
+<tr>
+<th align="center">IP</th>
+<th align="center">主机名</th>
+<th align="center">安装服务</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">192.168.40.100</td>
+<td align="center">master</td>
+<td align="center">jdk1.8，flink1.7.1</td>
+</tr>
+<tr>
+<td align="center">192.168.40.101</td>
+<td align="center">worker1</td>
+<td align="center">jdk1.8，flink1.7.1</td>
+</tr>
+<tr>
+<td align="center">192.168.40.102</td>
+<td align="center">worker2</td>
+<td align="center">jdk1.8，flink1.7.1</td>
+</tr>
+</tbody></table>
+<p><font color="32CD32">jdk1.8安装</font></p>
+<p><a href="https://hxqxiaoqi.gitee.io/2019/06/04/JDK1.8环境安装-linux/">jdk1.8 安装跳转</a> 所有节点都需要安装</p>
+<p><font color="32CD32">设置ssh免密</font></p>
+<p>在master上执行以下脚本，根据实际情况修改IP和密码。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">cat &gt; ssh.sh &lt;&lt; EOF</span><br><span class="line">wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo</span><br><span class="line">curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo</span><br><span class="line">yum install -y expect</span><br><span class="line"></span><br><span class="line"><span class="comment">#分发公钥</span></span><br><span class="line">ssh-keygen -t rsa -P <span class="string">""</span> -f /root/.ssh/id_rsa</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> 192.168.40.100 192.168.40.101 192.168.40.102</span><br><span class="line"><span class="keyword">do</span></span><br><span class="line">expect -c <span class="string">"</span></span><br><span class="line"><span class="string">spawn ssh-copy-id -i /root/.ssh/id_rsa.pub root@\$i</span></span><br><span class="line"><span class="string">        expect &#123;</span></span><br><span class="line"><span class="string">                \"*yes/no*\" &#123;send \"yes\r\"; exp_continue&#125;</span></span><br><span class="line"><span class="string">                \"*password*\" &#123;send \"123123\r\"; exp_continue&#125;</span></span><br><span class="line"><span class="string">                \"*Password*\" &#123;send \"123123\r\";&#125;</span></span><br><span class="line"><span class="string">        &#125; "</span></span><br><span class="line"><span class="keyword">done</span></span><br><span class="line">EOF</span><br><span class="line">bash ssh.sh</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">flink1.7.1 安装</font></p>
+<p>以下操作，没有特殊说明，均在master上执行</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 下载</span></span><br><span class="line">wget https://archive.apache.org/dist/flink/flink-1.7.1/flink-1.7.1-bin-hadoop27-scala_2.11.tgz</span><br><span class="line"><span class="comment"># 解压</span></span><br><span class="line">tar xf flink-1.7.1-bin-hadoop27-scala_2.11.tgz -C /opt</span><br></pre></td></tr></table></figure>
+
+<p>修改配置：/opt/flink-1.7.1/conf/masters</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">192.168.40.100:8081</span><br></pre></td></tr></table></figure>
+
+<p>修改配置：/opt/flink-1.7.1/conf/slaves</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">192.168.40.102</span><br><span class="line">192.168.40.101</span><br></pre></td></tr></table></figure>
+
+<p>修改配置：/opt/flink-1.7.1/conf/flink-conf.yaml</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># jobmanager地址</span></span><br><span class="line"><span class="string">jobmanager.rpc.address:</span> <span class="number">192.168</span><span class="number">.40</span><span class="number">.100</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># JobManager的端口号</span></span><br><span class="line"><span class="string">jobmanager.rpc.port:</span> <span class="number">6123</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># jobmanager可用最大内存，根据服务器内存设置</span></span><br><span class="line"><span class="string">jobmanager.heap.size:</span> <span class="number">1024</span><span class="string">m</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># taskmanager可用最大内存，也就是每个taskmanager所在的服务器能用的最大内存</span></span><br><span class="line"><span class="string">taskmanager.heap.size:</span> <span class="number">1024</span><span class="string">m</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 每台taskmanager最大插槽数，可以根据cpu核数设定，用于划分内存，如：上面的值设置16G，slot设置2，每个slot有8G可用</span></span><br><span class="line"><span class="string">taskmanager.numberOfTaskSlots:</span> <span class="number">2</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 默认使用插槽数，每个job默认分配的slot数</span></span><br><span class="line"><span class="string">parallelism.default:</span> <span class="number">1</span></span><br></pre></td></tr></table></figure>
+
+<p>配置环境变量</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">cat &gt;&gt; /etc/profile &lt;&lt; EOF</span><br><span class="line"><span class="built_in">export</span> FLINK_HOME=/opt/flink-1.7.1</span><br><span class="line"><span class="built_in">export</span> PATH=\<span class="variable">$PATH</span>:\<span class="variable">$FLINK_HOME</span>/bin</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
+
+<p>分发配置</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> node_ip <span class="keyword">in</span> 192.168.40.101 192.168.40.102</span><br><span class="line"><span class="keyword">do</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">"&gt;&gt;&gt; <span class="variable">$&#123;node_ip&#125;</span>"</span></span><br><span class="line">    scp -r /opt/flink-1.7.1/ root@<span class="variable">$&#123;node_ip&#125;</span>:/opt</span><br><span class="line">    scp /etc/profile root@<span class="variable">$&#123;node_ip&#125;</span>:/etc/</span><br><span class="line">    ssh root@<span class="variable">$&#123;node_ip&#125;</span> <span class="string">"source /etc/profile"</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure>
+
+<p>启动与停止</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">/opt/flink-1.7.1/bin/start-cluster.sh</span><br><span class="line">/opt/flink-1.7.1/bin/stop-cluster.sh</span><br></pre></td></tr></table></figure>
+
+<p>访问</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># flink web管理界面，可以在浏览器访问</span></span><br><span class="line">curl http://192.168.40.100:8081</span><br></pre></td></tr></table></figure>
+
+<p>运行任务</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> /opt/flink-1.7.1/</span><br><span class="line">./bin/flink run examples/streaming/WordCount.jar --input /opt/flink-1.7.1/README.txt</span><br></pre></td></tr></table></figure>
+
+<h2 id="Standalone-HA-模式"><a href="#Standalone-HA-模式" class="headerlink" title="Standalone HA 模式"></a>Standalone HA 模式</h2><p>首先，我们需要知道 Flink 有两种部署的模式，分别是 Standalone 以及 Yarn Cluster 模式。对于 Standalone 来说，Flink 必须依赖于 Zookeeper 来实现 JobManager 的 HA（Zookeeper 已经成为了大部分开源框架 HA 必不可少的模块）。在 Zookeeper 的帮助下，一个 Standalone 的 Flink 集群会同时有多个活着的 JobManager，其中只有一个处于工作状态，其他处于 Standby 状态。当工作中的 JobManager 失去连接后（如宕机或 Crash），Zookeeper 会从 Standby 中选举新的 JobManager 来接管 Flink 集群。</p>
+<p><font color="32CD32">zookeeper 安装</font></p>
+<p><a href="https://hxqxiaoqi.gitee.io/2020/03/26/zookeeper%20集群搭建/">zookeeper 集群安装跳转</a></p>
+<p><font color="32CD32">修改配置：conf/flink-conf.yaml</font></p>
+<p>继续之前的配置</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#jobmanager.rpc.address: master	#注释rpc</span></span><br><span class="line">high-availability:zookeeper                             <span class="comment">#指定高可用模式（必须）</span></span><br><span class="line">high-availability.zookeeper.quorum:master:2181,worker1:2181,worker2:2181  <span class="comment">#ZooKeeper仲裁是ZooKeeper服务器的复制组，它提供分布式协调服务（必须）</span></span><br><span class="line">high-availability.storageDir:hdfs:///flink/ha/       <span class="comment">#JobManager元数据保存在文件系统storageDir中，只有指向此状态的指针存储在ZooKeeper中（必须）</span></span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">修改：conf/masters</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">master:8081</span><br><span class="line">worker1:8081</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">修改：conf/slaves</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">master</span><br><span class="line">worker1</span><br><span class="line">worker2</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">启动</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./bin/start-cluster.sh</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">查看</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">[root@master flink-1.7.1]<span class="comment"># jps</span></span><br><span class="line">10402 ResourceManager</span><br><span class="line">18563 Jps</span><br><span class="line">18261 TaskManagerRunner</span><br><span class="line">2056 NameNode</span><br><span class="line">17754 StandaloneSessionClusterEntrypoint</span><br><span class="line">2252 SecondaryNameNode</span><br><span class="line">6879 QuorumPeerMain</span><br><span class="line"></span><br><span class="line">[root@worker1 flink-1.7.1]<span class="comment"># jps</span></span><br><span class="line">1201 DataNode</span><br><span class="line">3938 QuorumPeerMain</span><br><span class="line">6274 NodeManager</span><br><span class="line">10787 StandaloneSessionClusterEntrypoint</span><br><span class="line">11273 TaskManagerRunner</span><br><span class="line">11453 Jps</span><br><span class="line"></span><br><span class="line">[root@worker2 flink-1.7.1]<span class="comment"># jps</span></span><br><span class="line">6177 Jps</span><br><span class="line">5988 TaskManagerRunner</span><br><span class="line">2135 QuorumPeerMain</span><br><span class="line">2698 NodeManager</span><br><span class="line">1199 DataNode</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">测试</font></p>
+<ol>
+<li>登录web界面，查看master在哪台服务器上</li>
+<li>kill掉master</li>
+<li>查看master是否有更改</li>
+</ol>
+<h2 id="Flink-on-yarn-部署模式"><a href="#Flink-on-yarn-部署模式" class="headerlink" title="Flink on yarn 部署模式"></a>Flink on yarn 部署模式</h2><p><a href="https://hxqxiaoqi.gitee.io/2020/03/20/hadoop%20完全分布式搭建/">安装hadoop集群</a></p>
+<p>因Flink强大的灵活性及开箱即用的原则， 因此提交作业分为2种情况：</p>
+<ul>
+<li>yarn seesion</li>
+<li>Flink run</li>
+</ul>
+<p>这2者对于现有大数据平台资源使用率有着很大的区别：</p>
+<ul>
+<li>1.第一种yarn seesion(Start a long-running Flink cluster on YARN)这种方式需要先启动集群，然后在提交作业，接着会向yarn申请一块空间后，资源永远保持不变。如果资源满了，下一个作业就无法提交，只能等到yarn中的其中一个作业执行完成后，释放了资源，那下一个作业才会正常提交.</li>
+<li>2.第二种Flink run直接在YARN上提交运行Flink作业(Run a Flink job on YARN)，这种方式的好处是一个任务会对应一个job,即每提交一个作业会根据自身的情况，向yarn申请资源，直到作业执行完成，并不会影响下一个作业的正常运行，除非是yarn上面没有任何资源的情况下。</li>
+</ul>
+<p>注意事项:如果是平时的本地测试或者开发，可以采用第一种方案；如果是生产环境推荐使用第二种方案；</p>
+<p>Flink on yarn模式部署时，不需要对Flink做任何修改配置，只需要将其解压传输到各个节点之上。但如果要实现高可用的方案，这个时候就需要到Flink相应的配置修改参数，具体的配置文件是FLINK_HOME/conf/flink-conf.yaml。</p>
+<p>对于Flink on yarn模式，我们并不需要在conf配置下配置 masters和slaves。因为在指定TM的时候可以通过参数“-n”来标识需要启动几个TM;Flink on yarn启动后，如果是在分离式模式你会发现，在所有的节点只会出现一个 YarnSessionClusterEntrypoint进程；如果是客户端模式会出现2个进程一个YarnSessionClusterEntrypoint和一个FlinkYarnSessionCli进程。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 客户端模式</span></span><br><span class="line">./bin/yarn-session.sh -n 2 -jm 1024 -tm 1024</span><br><span class="line"></span><br><span class="line">./bin/flink run ./examples/batch/WordCount.jar -input hdfs://192.168.50.63:9000/LICENSE -output hdfs://192.168.50.63:9000/wordcount-result_1.txt</span><br><span class="line"></span><br><span class="line">yarn application --list	<span class="comment"># 查看所有yarn容器</span></span><br><span class="line">yarn application -<span class="built_in">kill</span> application_1550836652097_0002	<span class="comment"># 删除指定yarn</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 分离模式</span></span><br><span class="line">./bin/yarn-session.sh -nm test3 -d</span><br><span class="line"></span><br><span class="line"><span class="comment"># Flink run 方式提交</span></span><br><span class="line">./bin/flink run -m yarn-cluster -yn 1 -yjm 1024 -ytm 1024 ./examples/batch/WordCount.jar</span><br><span class="line"></span><br><span class="line">hdfs dfs -put LICENSE /	<span class="comment">#上传文件到hdfs</span></span><br><span class="line"></span><br><span class="line">./bin/flink run -m yarn-cluster -yn 1 -yjm 1024 -ytm 1024  ./examples/batch/WordCount.jar -input hdfs://192.168.50.63:9000/LICENSE -output hdfs://192.168.50.63:9000/wordcount-result.txt</span><br><span class="line"></span><br><span class="line"><span class="comment"># 运行到指定的yarn session</span></span><br><span class="line">./bin/flink run -yid application_1550579025929_62420 ./examples/batch/WordCount.jar -input hdfs://data-hadoop-112-16.bjrs.zybang.com:8020/flume/events-.1539684881482 -output hdfs://data-hadoop-112-16.bjrs.zybang.com:8020/flink/flink-test02.txt</span><br></pre></td></tr></table></figure>
+
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>版权声明： </strong>
+          本博客所有文章除特别声明外，著作权归作者所有。转载请注明出处！
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://hxqxiaoqi.gitee.io/2020/04/26/flink 部署/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/flink/">flink</a></li></ul>
+
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2020/04/30/openldap 安装/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            openldap 安装
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2020/04/21/CA 证书详解/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">CA 证书详解</div>
+      </a>
+    
+  </nav>
+
+  
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2015-2020
+        <i class="ri-heart-fill heart_icon"></i> 自在
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        
+        由 <a href="https://hexo.io" target="_blank">Hexo</a> 强力驱动
+        <span class="division">|</span>
+        主题 - <a href="https://github.com/Shen-Yu/hexo-theme-ayer" target="_blank">Ayer</a>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>访问人数:<span id="busuanzi_value_site_uv"></span>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>浏览次数:<span id="busuanzi_value_page_pv"></span></span>
+</span></span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+        <script type="text/javascript" src="https://s9.cnzz.com/z_stat.php?id=1278069914&amp;web_id=1278069914"></script>
+        
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="自在技术博客"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags/友情链接/">链接</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search" title="搜索">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <script>
+      if (window.matchMedia("(max-width: 768px)").matches) {
+        document.querySelector('.content').classList.remove('on');
+        document.querySelector('.sidebar').classList.remove('on');
+      }
+    </script>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    <script src="/js/jquery-2.0.3.min.js"></script>
+<script src="/js/lazyload.min.js"></script>
+<!-- Tocbot -->
+
+<script src="/js/tocbot.min.js"></script>
+<script>
+  tocbot.init({
+    tocSelector: '.tocbot',
+    contentSelector: '.article-entry',
+    headingSelector: 'h1, h2, h3, h4, h5, h6',
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: 'main',
+    positionFixedSelector: '.tocbot',
+    positionFixedClass: 'is-position-fixed',
+    fixedSidebarOffset: 'auto'
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css">
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+<script src="/dist/main.js"></script>
+<!-- ImageViewer -->
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script>
+
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+
+<link rel="stylesheet" href="/css/clipboard.css">
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+
+
+<!-- CanvasBackground -->
+
+
+    
+  </div>
+</body>
+
+</html>

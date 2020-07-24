@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-CN">
+
+
+<head>
+  <meta charset="utf-8" />
+    
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>
+    nginx配置大全 |  自在技术博客
+  </title>
+  <meta name="generator" content="hexo-theme-ayer">
+  
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" href="/dist/main.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css">
+  <link rel="stylesheet" href="/css/custom.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+  
+  
+
+  
+
+</head>
+
+</html>
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article id="post-nginx配置大全" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  nginx配置大全
+</h1>
+ 
+
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2019/09/18/nginx配置大全/" class="article-date">
+  <time datetime="2019-09-18T11:00:00.000Z" itemprop="datePublished">2019-09-18</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/linux基础/">linux基础</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> 字数统计:</span>
+            <span class="post-count">6k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> 阅读时长≈</span>
+            <span class="post-count">24 分钟</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <h1 id="全局配置"><a href="#全局配置" class="headerlink" title="全局配置"></a>全局配置</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># nginx启动的进程数</span></span><br><span class="line">worker_processes 2; </span><br><span class="line">	</span><br><span class="line"><span class="comment"># 让不同的进程使用不同的cpu</span></span><br><span class="line">worker_cpu_affinity 01 10;  </span><br><span class="line"></span><br><span class="line"><span class="comment"># 一个进程打开的最多文件描述符，不大于ulimit的限制</span></span><br><span class="line">worker_rlimit_nofile 65535;</span><br><span class="line"></span><br><span class="line">events &#123;</span><br><span class="line">	<span class="comment">#epoll事件模型,处理效率高</span></span><br><span class="line">	use epoll;       </span><br><span class="line">	</span><br><span class="line">	<span class="comment">#nginx单个进程可连接的线程数</span></span><br><span class="line">	worker_connections  1024;   </span><br><span class="line">	</span><br><span class="line">	<span class="comment">#on:worker以串行方式处理连接,off:以并行方式,吞吐量大时建议关闭</span></span><br><span class="line">	multi_accept on;                </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="http区域设置"><a href="#http区域设置" class="headerlink" title="http区域设置"></a>http区域设置</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br></pre></td><td class="code"><pre><span class="line">http &#123;</span><br><span class="line">	<span class="comment"># 调用mime.types，定义资源的媒体类型,#文件扩展名与类型映射表</span></span><br><span class="line">	include  mime.types;           </span><br><span class="line">	</span><br><span class="line">	<span class="comment"># 定义默认资源的媒体类型</span></span><br><span class="line">	default_type  application/octet-stream; </span><br><span class="line">	</span><br><span class="line">	<span class="comment"># 立即将数据从磁盘读到缓存,注意：如果图片显示不正常把这个改成off.所以当 Nginx 是一个静态文件服务器的时候，开启SENDFILE 配置项能大大提高 Nginx 的性能,但是当 Nginx 是作为一个反向代理来使用的时候，SENDFILE 则没什么用了，因为 Nginx 是反向代理的时候。 in_fd 就不是文件句柄而是 socket，此时就不符合 sendfile 函数的参数要求了。</span></span><br><span class="line">	sendfile  on;  </span><br><span class="line">	</span><br><span class="line">	<span class="comment"># 防止网络阻塞，必须在sendfile开启模式才有效，与tcp_nodelay on;相反，使用数据量大的时候使用</span></span><br><span class="line">	tcp_nopush on;                  </span><br><span class="line">	</span><br><span class="line">	<span class="comment"># 可以指定一条tcp连接上最多能发送的请求数量，超过keepalive_requests数量时server端会关闭tcp连接，默认是100</span></span><br><span class="line">	keepalive_requests 1000;	</span><br><span class="line">	</span><br><span class="line">	<span class="comment"># 给客户端分配keep-alive链接超时时间</span></span><br><span class="line">	keepalive_timeout  30;   </span><br><span class="line">	</span><br><span class="line">	<span class="comment"># 要包涵在keepalived参数才有效,禁用了Nagle 算法，适合数据少的时候使用</span></span><br><span class="line">	tcp_nodelay on;                 </span><br><span class="line">	</span><br><span class="line">	<span class="comment"># nginx是支持读取非nginx标准的用户自定义header的，但是需要在http或者server下开启header的下划线支持:</span></span><br><span class="line">	underscores_in_headers on;		</span><br><span class="line">	</span><br><span class="line">	<span class="comment"># 这个将为打开文件指定缓存，默认是没有启用的，max指定缓存数量，建议和打开文件inactive 是指经过多长时间文件没被请求后删除缓存。</span></span><br><span class="line">	open_file_cache max=102400 inactive=20s;</span><br><span class="line">	</span><br><span class="line">	 <span class="comment"># 这个是指多长时间检查一次缓存的有效信息。</span></span><br><span class="line">	open_file_cache_valid 30s;</span><br><span class="line">	</span><br><span class="line">	<span class="comment"># open_file_cache指令中的inactive 参数时间内文件的最少使用次数，如果超过这个数字，文件描述符一直是在缓存中打开的，如上例，如果有一个文件在inactive 时间内一次没被使用，它将被移除。</span></span><br><span class="line">	<span class="comment"># max=64 表示设置缓存文件的最大数目为 64, 超过此数字后 Nginx 将按照 LRU 原则丢弃冷数据。</span></span><br><span class="line">	<span class="comment"># inactive=30d 与 open_file_cache_min_uses 8 表示如果在 30 天内某文件被访问的次数低于 8 次，那就将它从缓存中删除。</span></span><br><span class="line">	<span class="comment"># open_file_cache_valid 3m 表示每 3 分钟检查一次缓存中的文件元信息是否是最新的，如果不是则更新之。</span></span><br><span class="line">	open_file_cache_min_uses 1;   </span><br><span class="line">	</span><br><span class="line"></span><br><span class="line">	<span class="comment"># 客户端请求头部的缓冲区大小，这个可以根据你的系统分页大小来设置，一般一个请求头的大小不会超过 1k，不过由于一&gt;般系统分页都要大于1k，所以这里设置为分页大小。分页大小可以用命令getconf PAGESIZE取得。</span></span><br><span class="line">	client_header_buffer_size 4k; </span><br><span class="line">	</span><br><span class="line">	 <span class="comment"># 设置读取客户端请求头超时时间，默认为60s，如果在此超时时间内客户端没有发送完请求头，则响应408（RequestTime-out）状态码给客户端</span></span><br><span class="line">	client_header_timeout 15;   </span><br><span class="line">	</span><br><span class="line">	<span class="comment"># 设置读取客户端内容体超时时间，默认为60s，此超时时间指的是两次成功读操作间隔时间，而不是发送整个请求体的超时时间，如果在此超时时间内客户端没有发送任何请求体，则响应408（RequestTime-out）状态码给客户端</span></span><br><span class="line">	client_body_timeout 15;   </span><br><span class="line">	</span><br><span class="line">	<span class="comment"># 上传文件大小限制，默认1M</span></span><br><span class="line">	client_max_body_size 10m;       </span><br><span class="line"></span><br><span class="line">	<span class="comment"># 告诉nginx关闭不响应的客户端连接。这将会释放那个客户端所占有的内存空间。</span></span><br><span class="line">	reset_timedout_connection on; </span><br><span class="line">	</span><br><span class="line">	<span class="comment"># 设置发送响应到客户端的超时时间，默认为60s，此超时时间指的也是两次成功写操作间隔时间，而不是发送整个响应的超时时间。如果在此超时时间内客户端没有接收任何响应，则Nginx关闭此连接。</span></span><br><span class="line">	send_timeout 15;     </span><br><span class="line">	</span><br><span class="line">	<span class="comment"># 并不会让nginx执行的速度更快，但它可以关闭在错误页面中的nginx版本数字，这样对于安全性是有好处的。</span></span><br><span class="line">	server_tokens off;              </span><br><span class="line"></span><br><span class="line">	<span class="comment"># limit模块，可防范一定量的DDOS攻击</span></span><br><span class="line">	<span class="comment"># 用来存储session会话的状态，如下是为session分配一个名为one的10M的内存存储区，限制了每秒只接受一个ip的一次请求 1r/s</span></span><br><span class="line">	limit_req_zone <span class="variable">$binary_remote_addr</span> zone=one:10m rate=1r/s;</span><br><span class="line">	limit_conn_zone <span class="variable">$binary_remote_addr</span> zone=addr:10m;</span><br><span class="line"></span><br><span class="line">	<span class="comment"># 如果nginx是代理，因设置在代理上</span></span><br><span class="line">	gzip on;	</span><br><span class="line">	</span><br><span class="line">	<span class="comment"># 默认值: 0 ，不管页面多大都压缩# 设置允许压缩的页面最小字节数，页面字节数从header头中的Content-Length中进行获取。# 建议设置成大于1k的字节数，小于1k可能会越压越大。 即: gzip_min_length 1024</span></span><br><span class="line">	gzip_min_length  10k;	</span><br><span class="line">	</span><br><span class="line">	<span class="comment"># 设置系统获取几个单位的缓存用于存储gzip的压缩结果数据流。 例如 4 4k 代表以4k为单位，按照原始数据大小以4k为单位的4倍申请内存。 4 8k 代表以8k为单位，按照原始数据大小以8k为单位的4倍申请内存。# 如果没有设置，默认值是申请跟原始数据相同大小的内存空间去存储gzip压缩结果。</span></span><br><span class="line">	gzip_buffers     4 16k;	</span><br><span class="line">	gzip_http_version 1.1;</span><br><span class="line">	</span><br><span class="line">	<span class="comment"># 默认值：1(建议选择为4)# gzip压缩比/压缩级别，压缩级别 1-9，级别越高压缩率越大，当然压缩时间也就越长（传输快但比较消耗cpu）。</span></span><br><span class="line">	gzip_comp_level 6;	</span><br><span class="line">	</span><br><span class="line">	<span class="comment"># 默认值: gzip_types text/html (默认不对js/css文件进行压缩)# 压缩类型，匹配MIME类型进行压缩# 不能用通配符 text/*# (无论是否指定)text/html默认已经压缩 # 设置哪压缩种文本文件可参考 conf/mime.types</span></span><br><span class="line">	gzip_types  text/plain application/x-javascript text/css application/xml text/javascript application/x-httpd-php image/jpeg image/gif  application/javascript application/json;</span><br><span class="line">	</span><br><span class="line">	<span class="comment"># 选择支持vary header；改选项可以让前端的缓存服务器缓存经过gzip压缩的页面; 这个可以不写，表示在传送数据时，给客户端说明我使用了gzip压缩。</span></span><br><span class="line">	gzip_vary on;	</span><br><span class="line">	gzip_proxied [off|expired|no-cache|no-store|private|no_last_modified|no_etag|auth|any] ...</span><br><span class="line">	<span class="comment"># 默认值：off</span></span><br><span class="line">	<span class="comment"># Nginx作为反向代理的时候启用，开启或者关闭后端服务器返回的结果，匹配的前提是后端服务器必须要返回包含"Via"的 header头。</span></span><br><span class="line">	<span class="comment">#off - 关闭所有的代理结果数据的压缩</span></span><br><span class="line">	<span class="comment">#expired - 启用压缩，如果header头中包含 "Expires" 头信息</span></span><br><span class="line">	<span class="comment">#no-cache - 启用压缩，如果header头中包含 "Cache-Control:no-cache" 头信息</span></span><br><span class="line">	<span class="comment">#no-store - 启用压缩，如果header头中包含 "Cache-Control:no-store" 头信息</span></span><br><span class="line">	<span class="comment">#private - 启用压缩，如果header头中包含 "Cache-Control:private" 头信息</span></span><br><span class="line">	<span class="comment">#no_last_modified - 启用压缩,如果header头中不包含 "Last-Modified" 头信息</span></span><br><span class="line">	<span class="comment">#no_etag - 启用压缩 ,如果header头中不包含 "ETag" 头信息</span></span><br><span class="line">	<span class="comment">#auth - 启用压缩 , 如果header头中包含 "Authorization" 头信息</span></span><br><span class="line">	<span class="comment">#any - 无条件启用压缩</span></span><br><span class="line"></span><br><span class="line">	gzip_disable <span class="string">"MSIE [1-5]\."</span>;</span><br><span class="line">	<span class="comment"># 禁用IE6的gzip压缩，又是因为杯具的IE6。当然，IE6目前依然广泛的存在，所以这里你也可以设置为“MSIE [1-5].”</span></span><br><span class="line">	<span class="comment"># IE6的某些版本对gzip的压缩支持很不好，会造成页面的假死，今天产品的同学就测试出了这个问题</span></span><br><span class="line">	<span class="comment">#后来调试后，发现是对img进行gzip后造成IE6的假死，把对img的gzip压缩去掉后就正常了</span></span><br><span class="line">	<span class="comment">#为了确保其它的IE6版本不出问题，所以建议加上gzip_disable的设置</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">#定义日子格式</span></span><br><span class="line">	log_format  main  <span class="string">'$remote_addr - $remote_user [$time_local] "$request" '</span></span><br><span class="line">                      <span class="string">'$status $body_bytes_sent "$http_referer" '</span></span><br><span class="line">                      <span class="string">'"$http_user_agent" "$http_x_forwarded_for"'</span>;</span><br><span class="line">    access_log  logs/access.log  main;</span><br></pre></td></tr></table></figure>
+
+<h1 id="proxy-pass反向代理配置详解"><a href="#proxy-pass反向代理配置详解" class="headerlink" title="proxy_pass反向代理配置详解"></a>proxy_pass反向代理配置详解</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br><span class="line">260</span><br><span class="line">261</span><br><span class="line">262</span><br><span class="line">263</span><br><span class="line">264</span><br><span class="line">265</span><br><span class="line">266</span><br><span class="line">267</span><br><span class="line">268</span><br><span class="line">269</span><br><span class="line">270</span><br><span class="line">271</span><br><span class="line">272</span><br><span class="line">273</span><br><span class="line">274</span><br><span class="line">275</span><br><span class="line">276</span><br><span class="line">277</span><br><span class="line">278</span><br><span class="line">279</span><br><span class="line">280</span><br><span class="line">281</span><br><span class="line">282</span><br><span class="line">283</span><br><span class="line">284</span><br><span class="line">285</span><br><span class="line">286</span><br><span class="line">287</span><br><span class="line">288</span><br><span class="line">289</span><br><span class="line">290</span><br><span class="line">291</span><br><span class="line">292</span><br><span class="line">293</span><br><span class="line">294</span><br><span class="line">295</span><br><span class="line">296</span><br><span class="line">297</span><br><span class="line">298</span><br><span class="line">299</span><br><span class="line">300</span><br><span class="line">301</span><br><span class="line">302</span><br><span class="line">303</span><br><span class="line">304</span><br><span class="line">305</span><br><span class="line">306</span><br><span class="line">307</span><br><span class="line">308</span><br><span class="line">309</span><br><span class="line">310</span><br><span class="line">311</span><br><span class="line">312</span><br><span class="line">313</span><br><span class="line">314</span><br><span class="line">315</span><br><span class="line">316</span><br><span class="line">317</span><br><span class="line">318</span><br><span class="line">319</span><br><span class="line">320</span><br><span class="line">321</span><br><span class="line">322</span><br><span class="line">323</span><br><span class="line">324</span><br><span class="line">325</span><br><span class="line">326</span><br><span class="line">327</span><br><span class="line">328</span><br><span class="line">329</span><br><span class="line">330</span><br><span class="line">331</span><br><span class="line">332</span><br><span class="line">333</span><br><span class="line">334</span><br><span class="line">335</span><br><span class="line">336</span><br><span class="line">337</span><br><span class="line">338</span><br><span class="line">339</span><br><span class="line">340</span><br><span class="line">341</span><br><span class="line">342</span><br><span class="line">343</span><br><span class="line">344</span><br><span class="line">345</span><br><span class="line">346</span><br></pre></td><td class="code"><pre><span class="line">	location / &#123;</span><br><span class="line">		proxy_pass  http://apachephp;</span><br><span class="line">		proxy_redirect     default;		<span class="comment">#重写后端返回的域名格式</span></span><br><span class="line">		proxy_set_header   Host             <span class="variable">$host</span>;	<span class="comment">#$host变量赋予Hsot，$host：客户端请求主机地址，$proxy_host：代理服务器请求的主机地址</span></span><br><span class="line">		proxy_set_header   X-Real-IP        <span class="variable">$remote_addr</span>;	<span class="comment">#$remote_addr：为客户端IP，把真实客户端IP写入到请求头X-Real-IP</span></span><br><span class="line">		proxy_set_header   X-Forwarded-For  <span class="variable">$proxy_add_x_forwarded_for</span>;	</span><br><span class="line">		<span class="comment">#把请求头中的X-Forwarded-For与$remote_addr用逗号合起来，如果请求头中没有X-Forwarded-For则$proxy_add_x_forwarded_for为$remote_addr</span></span><br><span class="line">		<span class="comment">#X-Forwarded-For代表了客户端IP，反向代理如Nginx通过$proxy_add_x_forwarded_for添加此项，X-Forwarded-For的格式为X-Forwarded-For:real client ip, proxy ip 1, proxy ip N，每经过一个反向代理就在请求头X-Forwarded-For后追加反向代理IP</span></span><br><span class="line">		</span><br><span class="line">		proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;	<span class="comment">#注：支付功能服务最好关闭</span></span><br><span class="line">		<span class="comment">#error 和后端服务器建立连接时，或者向后端服务器发送请求时，或者从后端服务器接收响应头时，出现错误 </span></span><br><span class="line">		<span class="comment">#timeout 和后端服务器建立连接时，或者向后端服务器发送请求时，或者从后端服务器接收响应头时，出现超时 </span></span><br><span class="line">		<span class="comment">#invalid_header  后端服务器返回空响应或者非法响应头 </span></span><br><span class="line">		<span class="comment">#http_500  后端服务器返回的响应状态码为500 </span></span><br><span class="line">		<span class="comment">#http_502 # 后端服务器返回的响应状态码为502 </span></span><br><span class="line">		<span class="comment">#http_503 # 后端服务器返回的响应状态码为503 </span></span><br><span class="line">		<span class="comment">#http_504 # 后端服务器返回的响应状态码为504 </span></span><br><span class="line">		<span class="comment">#http_404 # 后端服务器返回的响应状态码为404 </span></span><br><span class="line">		<span class="comment">#off 	  # 停止将请求发送给下一台后端服务器</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#proxy_buffers代理缓冲配置	</span></span><br><span class="line">		proxy_temp_file_write_size 64k;</span><br><span class="line">		proxy_max_temp_file_size 	0;		<span class="comment">#临时文件由proxy_max_temp_file_size和proxy_temp_file_write_size这两个指令决定。 proxy_temp_file_write_size是一次访问能写入的临时文件的大小，默认是proxy_buffer_size和proxy_buffers中设置的缓冲区大小的2倍，Linux下一般是8k。proxy_max_temp_file_size指定当响应内容大于proxy_buffers指定的缓冲区时, 写入硬盘的临时文件的大小. 如果超过了这个值, Nginx将与Proxy服务器同步的传递内容, 而不再缓冲到硬盘. 设置为0时, 则直接关闭硬盘缓冲.</span></span><br><span class="line">		proxy_connect_timeout      60;		<span class="comment">#与后端/上游服务器建立连接的超时时间，默认为60s，此时间不超过75s。</span></span><br><span class="line">		proxy_send_timeout         60;		<span class="comment">#设置往后端/上游服务器发送请求的超时时间，默认为60s，此超时时间指的是两次成功写操作间隔时间，而不是发送整个请求的超时时间，如果在此超时时间内上游服务器没有接收任何响应，则Nginx关闭此连接。</span></span><br><span class="line">		proxy_read_timeout         60;		<span class="comment">#设置从后端/上游服务器读取响应的超时时间，默认为60s，此超时时间指的是两次成功读操作间隔时间，而不是读取整个响应体的超时时间，如果在此超时时间内上游服务器没有发送任何响应，则Nginx关闭此连接</span></span><br><span class="line">		proxy_buffer_size          4k;		<span class="comment">#后端服务器的相应头会放到proxy_buffer_size当中，这个大小默认等于proxy_buffers当中的设置单个缓冲区的大小。 proxy_buffer_size只是响应头的缓冲区，没有必要也跟着设置太大。 proxy_buffer_size最好单独设置，一般设置个4k就够了</span></span><br><span class="line">		proxy_buffers              4 32k;	<span class="comment">#proxy_buffers的缓冲区大小一般会设置的比较大，以应付大网页。 proxy_buffers当中单个缓冲区的大小是由系统的内存页面大小决定的，Linux系统中一般为4k。 proxy_buffers由缓冲区数量和缓冲区大小组成的。总的大小为number*size。若某些请求的响应过大,则超过_buffers的部分将被缓冲到硬盘(缓冲目录由_temp_path指令指定), 当然这将会使读取响应的速度减慢, 影响用户体验. 可以使用proxy_max_temp_file_size指令关闭磁盘缓冲.</span></span><br><span class="line">		proxy_busy_buffers_size    64k;		<span class="comment">#proxy_busy_buffers_size不是独立的空间，他是proxy_buffers和proxy_buffer_size的一部分。nginx会在没有完全读完后端响应的时候就开始向客户端传送数据，所以它会划出一部分缓冲区来专门向客户端传送数据(这部分的大小是由proxy_busy_buffers_size来控制的，建议为proxy_buffers中单个缓冲区大小的2倍)，然后它继续从后端取数据，缓冲区满了之后就写到磁盘的临时文件中。</span></span><br><span class="line">		proxy_buffering						<span class="comment">#这个参数用来控制是否打开后端响应内容的缓冲区，如果这个设置为off，那么proxy_buffers和proxy_busy_buffers_size这两个指令将会失效。 但是无论proxy_buffering是否开启，对proxy_buffer_size都是生效的</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#proxy_cache代理缓存设置</span></span><br><span class="line">	<span class="comment">#nginx的web缓存功能的主要是由proxy_cache、fastcgi_cache指令集和相关指令集完成，proxy_cache指令负责反向代理缓存后端服务器的静态内容，fastcgi_cache主要用来处理FastCGI动态进程缓存</span></span><br><span class="line">	http块： </span><br><span class="line">		proxy_cache_path /tmp/cache levels=1:2 keys_zone=nuget-cache:20m max_size=50g inactive=168h;</span><br><span class="line">		<span class="comment">#levels=1:2					#nginx会在上述配置的缓存文件路径下再创建两级目录，第一级目录命名为一个字符，第二级目录命名为2个字符</span></span><br><span class="line">		<span class="comment">#keys_zone=nuget-cache:20m	#定义缓存名称和共享内存大小，并mkdir创建nuget-cache缓存目录</span></span><br><span class="line">		<span class="comment">#max_size=50g				#最大缓存空间，如果缓存空间满，默认覆盖掉缓存时间最长的资源。</span></span><br><span class="line">		<span class="comment">#inactive=168h				#定义缓存时间</span></span><br><span class="line">	server/location块： </span><br><span class="line">		proxy_cache nuget-cache;	<span class="comment">#开启nuget-cache缓存</span></span><br><span class="line">		proxy_cache_valid 200 304 1h;		<span class="comment">#状态码200|304的过期为12h</span></span><br><span class="line">		proxy_cache_valid 404 1m;			<span class="comment">#状态码404的过期为1分钟</span></span><br><span class="line">		proxy_cache_valid any 1d;			<span class="comment">#其它的状态码过期为1天	</span></span><br><span class="line">		proxy_ignore_headers X-Accel-Expires Expires Cache-Control Set-Cookie; <span class="comment">#忽略后端头部缓存规则，这句代码很关键，尤其要忽略set-cookie</span></span><br><span class="line">		proxy_hide_header Cache-Control;	<span class="comment">#隐藏响应头部信息</span></span><br><span class="line">		add_header Cache-Control no-store；	<span class="comment">#设置响应头部请求</span></span><br><span class="line">		proxy_cache_key <span class="variable">$host</span><span class="variable">$uri</span><span class="variable">$is_args</span><span class="variable">$args</span>;<span class="comment">#设置nginx服务器在内存中为缓存数据建立索引时使用的关键字</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#upstream负载均衡配置</span></span><br><span class="line">	Nginx的upstream支持5种分配方式，下面将会详细介绍，其中，前三种为Nginx原生支持的分配方式，后两种为第三方支持的分配方式：</span><br><span class="line">	1、轮询         </span><br><span class="line">			轮询是upstream的默认分配方式，即每个请求按照时间顺序轮流分配到不同的后端服务器，如果某个后端服务器down掉后，能自动剔除。</span><br><span class="line">			upstream backend &#123;</span><br><span class="line">				server 192.168.1.101:8888;</span><br><span class="line">				server 192.168.1.102:8888;</span><br><span class="line">				server 192.168.1.103:8888;</span><br><span class="line">			&#125;</span><br><span class="line">	2、weight        </span><br><span class="line">			轮询的加强版，即可以指定轮询比率，weight和访问几率成正比，主要应用于后端服务器异质的场景下。</span><br><span class="line">			upstream backend &#123;</span><br><span class="line">				server 192.168.1.101 weight=1;</span><br><span class="line">				server 192.168.1.102 weight=2;</span><br><span class="line">				server 192.168.1.103 weight=3;</span><br><span class="line">			&#125;</span><br><span class="line">	3、ip_hash        </span><br><span class="line">			每个请求按照访问ip（即Nginx的前置服务器或者客户端IP）的<span class="built_in">hash</span>结果分配，这样每个访客会固定访问一个后端服务器，可以解决session一致问题。</span><br><span class="line">			upstream backend &#123;</span><br><span class="line">				ip_hash;</span><br><span class="line">				server 192.168.1.101:7777;</span><br><span class="line">				server 192.168.1.102:8888;</span><br><span class="line">				server 192.168.1.103:9999;</span><br><span class="line">			&#125;</span><br><span class="line">	4、fair        </span><br><span class="line">			fair顾名思义，公平地按照后端服务器的响应时间（rt）来分配请求，响应时间短即rt小的后端服务器优先分配请求。</span><br><span class="line">			upstream backend &#123;</span><br><span class="line">				server 192.168.1.101;</span><br><span class="line">				server 192.168.1.102;</span><br><span class="line">				server 192.168.1.103;</span><br><span class="line">				fair;</span><br><span class="line">			&#125;</span><br><span class="line">	5、url_hash</span><br><span class="line">			与ip_hash类似，但是按照访问url的<span class="built_in">hash</span>结果来分配请求，使得每个url定向到同一个后端服务器，主要应用于后端服务器为缓存时的场景下。</span><br><span class="line">			upstream backend &#123;</span><br><span class="line">				server 192.168.1.101;</span><br><span class="line">				server 192.168.1.102;</span><br><span class="line">				server 192.168.1.103;</span><br><span class="line">				<span class="built_in">hash</span> <span class="variable">$request_uri</span>;</span><br><span class="line">				hash_method crc32;</span><br><span class="line">			&#125;</span><br><span class="line">			其中，hash_method为使用的<span class="built_in">hash</span>算法，需要注意的是：此时，server语句中不能加weight等参数。</span><br><span class="line">	二、设备状态</span><br><span class="line">			down：表示当前server已停用</span><br><span class="line">			backup：表示当前server是备用服务器，只有其它非backup后端服务器都挂掉了或者很忙才会分配到请求。</span><br><span class="line">			weight：表示当前server负载权重，权重越大被请求几率越大。默认是1.</span><br><span class="line">			max_fails和fail_timeout一般会关联使用，如果某台server在fail_timeout时间内出现了max_fails次连接失败，那么Nginx会认为其已经挂掉了，从而在fail_timeout时间内不再去请求它，fail_timeout默认是10s，max_fails默认是1，即默认情况是只要发生错误就认为服务器挂掉了，如果将max_fails设置为0，则表示取消这项检查。</span><br><span class="line">			</span><br><span class="line">			举例说明如下：</span><br><span class="line">			upstream backend &#123;</span><br><span class="line">				server    backend1.example.com    weight=5;</span><br><span class="line">				server    127.0.0.1:8080          max_fails=3 fail_timeout=30s;</span><br><span class="line">				server    unix:/tmp/backend3      down;     </span><br><span class="line">			&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">#location配置</span></span><br><span class="line">	已=开头表示精确匹配</span><br><span class="line">	如 A 中只匹配根目录结尾的请求，后面不能带任何字符串。</span><br><span class="line">	^~ 开头表示uri以某个常规字符串开头，不是正则匹配</span><br><span class="line">	~ 开头表示区分大小写的正则匹配;</span><br><span class="line">	~* 开头表示不区分大小写的正则匹配</span><br><span class="line">	/ 通用匹配, 如果没有其它匹配,任何请求都会匹配到</span><br><span class="line">	顺序 no优先级：(location =) &gt; (location 完整路径) &gt; (location ^~ 路径) &gt; (location ~,~* 正则顺序) &gt; (location 部分起始路径) &gt; (/)</span><br><span class="line"></span><br><span class="line">	<span class="comment">#将符合js,css文件的等设定expries缓存参数，要求浏览器缓存。</span></span><br><span class="line">	location ~* \.(jpg|jpeg|gif|bmp|png)&#123;</span><br><span class="line">		deny all;	<span class="comment">#location 标签，根目录下的.svn目录禁止访问</span></span><br><span class="line">		allow   219.237.222.30;	<span class="comment">##允许访问的ip</span></span><br><span class="line">		limit_rate_after 100k;	<span class="comment">#文件的大小限制</span></span><br><span class="line">		limit_rate 100k;	<span class="comment">#超过文件大小限制，限制速度为100k/s</span></span><br><span class="line">		client_max_body_size 1000m; <span class="comment">#请求数据大小限制的</span></span><br><span class="line">		log_not_found off;<span class="comment">#是否在error_log中记录不存在的错误。默认是</span></span><br><span class="line">		access_log off;</span><br><span class="line">		expires 1d;<span class="comment">#缓存1天</span></span><br><span class="line">	&#125;</span><br><span class="line"><span class="comment">#rewrite配置</span></span><br><span class="line">	<span class="comment">#格式：</span></span><br><span class="line">	rewrite regex replacement [flag]</span><br><span class="line"></span><br><span class="line">	<span class="comment">#正则：regex</span></span><br><span class="line">	. ： 匹配除换行符以外的任意字符</span><br><span class="line">	? ： 重复0次或1次</span><br><span class="line">	+ ： 重复1次或更多次</span><br><span class="line">	* ： 重复0次或更多次</span><br><span class="line">	\d ：匹配数字</span><br><span class="line">	^ ： 匹配字符串的开始</span><br><span class="line">	$ ： 匹配字符串的介绍</span><br><span class="line">	&#123;n&#125; ： 重复n次</span><br><span class="line">	&#123;n,&#125; ： 重复n次或更多次</span><br><span class="line">	[c] ： 匹配单个字符c</span><br><span class="line">	[a-z] ： 匹配a-z小写字母的任意一个</span><br><span class="line">	</span><br><span class="line">	<span class="comment">#变量赋值</span></span><br><span class="line">	<span class="built_in">set</span> <span class="variable">$hostx</span> <span class="string">""</span>; </span><br><span class="line">	<span class="built_in">set</span> <span class="variable">$addrs</span> <span class="string">""</span>; </span><br><span class="line"></span><br><span class="line">	<span class="comment">#用作if判断的全局变量replacement</span></span><br><span class="line">	<span class="variable">$args</span> ： 			这个变量等于请求行中的参数，同<span class="variable">$query_string</span></span><br><span class="line">	<span class="variable">$content_length</span> ： 	请求头中的Content-length字段。</span><br><span class="line">	<span class="variable">$content_type</span> ： 	请求头中的Content-Type字段。</span><br><span class="line">	<span class="variable">$document_root</span> ： 	当前请求在root指令中指定的值。</span><br><span class="line">	<span class="variable">$host</span> ： 			请求主机头字段，否则为服务器名称。</span><br><span class="line">	<span class="variable">$http_user_agent</span> ： 客户端agent信息</span><br><span class="line">	<span class="variable">$http_cookie</span> ： 	客户端cookie信息</span><br><span class="line">	<span class="variable">$limit_rate</span> ： 		这个变量可以限制连接速率。</span><br><span class="line">	<span class="variable">$request_method</span> ： 	客户端请求的动作，通常为GET或POST。</span><br><span class="line">	<span class="variable">$remote_addr</span> ： 	客户端的IP地址。</span><br><span class="line">	<span class="variable">$remote_port</span> ： 	客户端的端口。</span><br><span class="line">	<span class="variable">$remote_user</span> ： 	已经经过Auth Basic Module验证的用户名。</span><br><span class="line">	<span class="variable">$request_filename</span> ：当前请求的文件路径，由root或<span class="built_in">alias</span>指令与URI请求生成。</span><br><span class="line">	<span class="variable">$scheme</span> ： 			HTTP方法（如http，https）。</span><br><span class="line">	<span class="variable">$server_protocol</span> ： 请求使用的协议，通常是HTTP/1.0或HTTP/1.1。</span><br><span class="line">	<span class="variable">$server_addr</span> ： 	服务器地址，在完成一次系统调用后可以确定这个值。</span><br><span class="line">	<span class="variable">$server_name</span> ： 	服务器名称。</span><br><span class="line">	<span class="variable">$server_port</span> ： 	请求到达服务器的端口号。</span><br><span class="line">	<span class="variable">$request_uri</span> ： 	包含请求参数的原始URI，不包含主机名，如：”/foo/bar.php?arg=baz”。</span><br><span class="line">	<span class="variable">$uri</span> ： 			不带请求参数的当前URI，<span class="variable">$uri</span>不包含主机名，如”/foo/bar.html”。</span><br><span class="line">	<span class="variable">$document_uri</span> ： 	与<span class="variable">$uri</span>相同。</span><br><span class="line"></span><br><span class="line">	<span class="comment">#标签flag</span></span><br><span class="line">	last : 相当于Apache的[L]标记，表示完成rewrite</span><br><span class="line">	<span class="built_in">break</span> : 停止执行当前虚拟主机的后续rewrite指令集</span><br><span class="line">	redirect : 返回302临时重定向，地址栏会显示跳转后的地址</span><br><span class="line">	permanent : 返回301永久重定向，地址栏会显示跳转后的地址</span><br><span class="line">	因为301和302不能简单的只返回状态码，还必须有重定向的URL，这就是<span class="built_in">return</span>指令无法返回301,302的原因了。这里 last 和 <span class="built_in">break</span> 区别有点难以理解：</span><br><span class="line">	<span class="comment">#注</span></span><br><span class="line">	last一般写在server和<span class="keyword">if</span>中，而<span class="built_in">break</span>一般使用在location中</span><br><span class="line">	last不终止重写后的url匹配，即新的url会再从server走一遍匹配流程，而<span class="built_in">break</span>终止重写后的匹配</span><br><span class="line">	<span class="built_in">break</span>和last都能组织继续执行后面的rewrite指令</span><br><span class="line">			</span><br><span class="line"><span class="comment">#https-ssl相关配置</span></span><br><span class="line">	方法一：</span><br><span class="line">	server &#123;</span><br><span class="line">		listen 80;</span><br><span class="line">		server_name bjubi.com;<span class="comment">#你的域名</span></span><br><span class="line">		rewrite ^(.*)$ https://<span class="variable">$host</span><span class="variable">$1</span> permanent;<span class="comment">#把http的域名请求转成https</span></span><br><span class="line">	&#125;</span><br><span class="line">	server &#123;</span><br><span class="line">	　　listen 443; <span class="comment">#监听端口</span></span><br><span class="line">	　　server_name bjubi.com;</span><br><span class="line">		root html；</span><br><span class="line"></span><br><span class="line">	　　ssl on; <span class="comment">#开启ssl</span></span><br><span class="line">	　　ssl_certificate /ls/app/nginx/conf/mgmtxiangqiankeys/server.crt; <span class="comment">#服务的证书</span></span><br><span class="line">	　　ssl_certificate_key /ls/app/nginx/conf/mgmtxiangqiankeys/server.key; <span class="comment">#服务端key</span></span><br><span class="line">	　　ssl_client_certificate /ls/app/nginx/conf/mgmtxiangqiankeys/ca.crt; <span class="comment">#客户端证书</span></span><br><span class="line">	　　ssl_session_timeout 5m; <span class="comment">#session超时时间</span></span><br><span class="line">	　　ssl_verify_client on; <span class="comment"># 开户客户端证书验证 </span></span><br><span class="line">	　　ssl_protocols SSLv2 SSLv3 TLSv1; <span class="comment">#允许SSL协议 </span></span><br><span class="line">	　　ssl_ciphers ALL:!ADH:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP; <span class="comment">#加密算法</span></span><br><span class="line">	　　ssl_prefer_server_ciphers on; <span class="comment">#启动加密算法</span></span><br><span class="line">	location / &#123;</span><br><span class="line">        index index.html index.htm;</span><br><span class="line">    &#125;</span><br><span class="line">	&#125;</span><br><span class="line">	方法二：</span><br><span class="line">	<span class="keyword">if</span> (<span class="variable">$scheme</span> != https) &#123; <span class="comment"># 强制 HTTP 跳转至 HTTPS</span></span><br><span class="line">		<span class="comment"># host 与 server_name 等价, redirect/permanent 分别为临时跳转/永久跳转</span></span><br><span class="line">		rewrite ^(.*)$  https://<span class="variable">$host</span><span class="variable">$1</span> permanent; </span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line"><span class="comment">#防盗链</span></span><br><span class="line">	<span class="comment">#防止别人直接从你网站引用图片等链接，消耗了你的资源和网络流量，那么我们的解决办法由几种： 1：水印，品牌宣传，你的带宽，服务器足够 2：防火墙，直接控制，前提是你知道IP来源 3：防盗链策略下面的方法是直接给予404的错误提示</span></span><br><span class="line">	location ~* .*\.(gif|jpg|png|jpeg)$ &#123;</span><br><span class="line">		expires     30d;</span><br><span class="line">		valid_referers *.hugao8.com www.hugao8.com m.hugao8.com *.baidu.com *.google.com;</span><br><span class="line">		<span class="keyword">if</span> (<span class="variable">$invalid_referer</span>) &#123;</span><br><span class="line">		<span class="comment">#rewrite ^/ http://ww4.sinaimg.cn/bmiddle/051bbed1gw1egjc4xl7srj20cm08aaa6.jpg;</span></span><br><span class="line">		<span class="built_in">return</span> 404;</span><br><span class="line">	&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="comment">#第一行：其中“gif|jpg|jpeg|png|bmp|swf”设置防盗链文件类型，自行修改，每个后缀用“|”符号分开！</span></span><br><span class="line">	<span class="comment">#第三行：就是白名单，允许文件链出的域名白名单，自行修改成您的域名！*.it300.com这个指的是子域名，域名与域名之间使用空格隔开！</span></span><br><span class="line">	<span class="comment">#第五行：这个图片是盗链返回的图片，也就是替换盗链网站所有盗链的图片。这个图片要放在没有设置防盗链的网站上，因为防盗链的作用，这个图片如果也放在防盗链网站上就会被当作防盗链显示不出来了，盗链者的网站所盗链图片会显示X符号。</span></span><br><span class="line">	<span class="comment">#第六行：直接返回404</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#后端服务器获取真实IP设置</span></span><br><span class="line">	nginx代理设置</span><br><span class="line">		proxy_set_header Host <span class="variable">$http_host</span>;</span><br><span class="line">		proxy_set_header X-Real-IP <span class="variable">$remote_addr</span>;</span><br><span class="line">		proxy_set_header X-Forwarded-For <span class="variable">$proxy_add_x_forwarded_for</span>;</span><br><span class="line">	后端服务器设置（在http或server设置，需要加载模块--with-http_realip_module）</span><br><span class="line">		real_ip_header X-Forwarded-For;</span><br><span class="line">		<span class="comment">#X-Forwarded-For获取代理IP段的第一个IP为真实IP</span></span><br><span class="line">		set_real_ip_from 192.168.0.0/16;	</span><br><span class="line">		<span class="comment">#定义从哪台服务器获取代理IP段</span></span><br><span class="line">		real_ip_recursive on;</span><br><span class="line">		<span class="comment">#real_ip_recursive 是否递归地排除直至得到用户ip</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#跨域设置</span></span><br><span class="line">	<span class="comment">#跨域其实就是访问不同网站的内容，可以直接使用rewrite重写实现</span></span><br><span class="line">	<span class="comment">#以下是反向代理实现跨域</span></span><br><span class="line">	location /apis &#123;</span><br><span class="line">	rewrite  ^/apis/(.*)$ /<span class="variable">$1</span> <span class="built_in">break</span>;</span><br><span class="line">	proxy_pass   http://localhost:82;</span><br><span class="line">	&#125;</span><br><span class="line">		</span><br><span class="line">实例：</span><br><span class="line">user  www www;</span><br><span class="line">worker_processes  4;</span><br><span class="line">worker_cpu_affinity 0001 0010 0100 1000;</span><br><span class="line">error_log  logs/error.log;</span><br><span class="line"><span class="comment">#error_log  logs/error.log  notice;</span></span><br><span class="line"><span class="comment">#error_log  logs/error.log  info;</span></span><br><span class="line">worker_rlimit_nofile 10240;</span><br><span class="line">pid        logs/nginx.pid;</span><br><span class="line">events &#123;</span><br><span class="line">    use epoll;</span><br><span class="line">    worker_connections  4096;</span><br><span class="line">&#125;</span><br><span class="line">http &#123;</span><br><span class="line">    include       mime.types;</span><br><span class="line">    default_type  application/octet-stream;</span><br><span class="line">    log_format  main  <span class="string">'$remote_addr - $remote_user [$time_local] "$request" '</span></span><br><span class="line">                      <span class="string">'$status $body_bytes_sent "$http_referer" '</span></span><br><span class="line">                      <span class="string">'"$http_user_agent" "$http_x_forwarded_for"'</span></span><br><span class="line">                      <span class="string">'"$upstream_cache_status"'</span>;</span><br><span class="line">access_log  logs/access.log  main;</span><br><span class="line">server_tokens off;</span><br><span class="line">    sendfile        on;</span><br><span class="line">    <span class="comment">#tcp_nopush     on;</span></span><br><span class="line">    <span class="comment">#keepalive_timeout  0;</span></span><br><span class="line">    keepalive_timeout  65;</span><br><span class="line">    <span class="comment">#Compression Settings</span></span><br><span class="line">    gzip on;</span><br><span class="line">    gzip_comp_level 6;</span><br><span class="line">    gzip_http_version 1.1;</span><br><span class="line">    gzip_proxied any;</span><br><span class="line">    gzip_min_length 1k;</span><br><span class="line">    gzip_buffers 16 8k;</span><br><span class="line">    gzip_types text/plain text/css text/javascript application/json application/javascript application/x-javascript application/xml;</span><br><span class="line">    gzip_vary on;</span><br><span class="line">    <span class="comment">#end gzip</span></span><br><span class="line">    <span class="comment"># http_proxy Settings</span></span><br><span class="line">    client_max_body_size   10m;</span><br><span class="line">    client_body_buffer_size   128k;</span><br><span class="line">    proxy_connect_timeout   75;</span><br><span class="line">    proxy_send_timeout   75;</span><br><span class="line">    proxy_read_timeout   75;</span><br><span class="line">    proxy_buffer_size   4k;</span><br><span class="line">    proxy_buffers   4 32k;</span><br><span class="line">    proxy_busy_buffers_size   64k;</span><br><span class="line">	proxy_temp_file_write_size  64k;</span><br><span class="line">	proxy_buffering on;</span><br><span class="line">    proxy_temp_path /usr/<span class="built_in">local</span>/nginx1.10/proxy_temp;</span><br><span class="line">    proxy_cache_path /usr/<span class="built_in">local</span>/nginx1.10/proxy_cache levels=1:2 keys_zone=my-cache:100m max_size=1000m inactive=600m max_size=2g;</span><br><span class="line">    <span class="comment">#load balance Settings</span></span><br><span class="line">    upstream backend &#123;</span><br><span class="line">        sticky;</span><br><span class="line">        server 192.168.31.141:80 weight=1 max_fails=2 fail_timeout=10s;</span><br><span class="line">        server 192.168.31.250:80 weight=1 max_fails=2 fail_timeout=10s;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">#virtual host Settings</span></span><br><span class="line">    server &#123;</span><br><span class="line">        listen       80;</span><br><span class="line">        server_name  localhost;</span><br><span class="line">        charset utf-8;</span><br><span class="line">        location  ~/purge(/.*) &#123;</span><br><span class="line">           allow 127.0.0.1;</span><br><span class="line">           allow 192.168.31.0/24;</span><br><span class="line">           deny all;</span><br><span class="line">           proxy_cache_purge my-cache <span class="variable">$host</span><span class="variable">$1</span><span class="variable">$is_args</span><span class="variable">$args</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        location / &#123;</span><br><span class="line">            index  index.php index.html index.htm;</span><br><span class="line">            proxy_pass        http://backend;</span><br><span class="line">            proxy_redirect off;</span><br><span class="line">            proxy_set_header  Host  <span class="variable">$host</span>;</span><br><span class="line">            proxy_set_header  X-Real-IP  <span class="variable">$remote_addr</span>;</span><br><span class="line">            proxy_set_header  X-Forwarded-For  <span class="variable">$proxy_add_x_forwarded_for</span>;</span><br><span class="line">            proxy_ignore_headers Set-Cookie;</span><br><span class="line">proxy_hide_header Set-Cookie;</span><br><span class="line">            proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;</span><br><span class="line">        &#125;</span><br><span class="line">        location ~ .*\.(gif|jpg|png|html|htm|css|js|ico|swf|pdf)(.*) &#123;</span><br><span class="line">           proxy_pass  http://backend;</span><br><span class="line">           proxy_redirect off;</span><br><span class="line">           proxy_set_header Host <span class="variable">$host</span>;</span><br><span class="line">           proxy_set_header X-Real-IP <span class="variable">$remote_addr</span>;</span><br><span class="line">           proxy_set_header X-Forwarded-For <span class="variable">$proxy_add_x_forwarded_for</span>;</span><br><span class="line">           proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;</span><br><span class="line">           proxy_cache my-cache;</span><br><span class="line">           add_header Nginx-Cache <span class="variable">$upstream_cache_status</span>;</span><br><span class="line">           proxy_cache_valid 200 304 301 302 8h;</span><br><span class="line">           proxy_cache_valid 404 1m;</span><br><span class="line">           proxy_cache_valid any 1d;</span><br><span class="line">           proxy_cache_key <span class="variable">$host</span><span class="variable">$uri</span><span class="variable">$is_args</span><span class="variable">$args</span>;</span><br><span class="line">           expires 30d;</span><br><span class="line">        &#125;</span><br><span class="line">        location /nginx_status &#123;</span><br><span class="line">            stub_status on;</span><br><span class="line">            access_log off;</span><br><span class="line">            allow 192.168.31.0/24;</span><br><span class="line">            deny all;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>版权声明： </strong>
+          本博客所有文章除特别声明外，著作权归作者所有。转载请注明出处！
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://hxqxiaoqi.gitee.io/2019/09/18/nginx配置大全/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/nginx/">nginx</a></li></ul>
+
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2019/10/18/redis主从与哨兵模式搭建/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            redis主从与哨兵模式搭建
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2019/09/17/k8s部署/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">kubeadm部署</div>
+      </a>
+    
+  </nav>
+
+  
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2015-2020
+        <i class="ri-heart-fill heart_icon"></i> 自在
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        
+        由 <a href="https://hexo.io" target="_blank">Hexo</a> 强力驱动
+        <span class="division">|</span>
+        主题 - <a href="https://github.com/Shen-Yu/hexo-theme-ayer" target="_blank">Ayer</a>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>访问人数:<span id="busuanzi_value_site_uv"></span>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>浏览次数:<span id="busuanzi_value_page_pv"></span></span>
+</span></span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+        <script type="text/javascript" src="https://s9.cnzz.com/z_stat.php?id=1278069914&amp;web_id=1278069914"></script>
+        
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="自在技术博客"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags/友情链接/">链接</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search" title="搜索">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <script>
+      if (window.matchMedia("(max-width: 768px)").matches) {
+        document.querySelector('.content').classList.remove('on');
+        document.querySelector('.sidebar').classList.remove('on');
+      }
+    </script>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    <script src="/js/jquery-2.0.3.min.js"></script>
+<script src="/js/lazyload.min.js"></script>
+<!-- Tocbot -->
+
+<script src="/js/tocbot.min.js"></script>
+<script>
+  tocbot.init({
+    tocSelector: '.tocbot',
+    contentSelector: '.article-entry',
+    headingSelector: 'h1, h2, h3, h4, h5, h6',
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: 'main',
+    positionFixedSelector: '.tocbot',
+    positionFixedClass: 'is-position-fixed',
+    fixedSidebarOffset: 'auto'
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css">
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+<script src="/dist/main.js"></script>
+<!-- ImageViewer -->
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script>
+
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+
+<link rel="stylesheet" href="/css/clipboard.css">
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+
+
+<!-- CanvasBackground -->
+
+
+    
+  </div>
+</body>
+
+</html>

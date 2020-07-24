@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-CN">
+
+
+<head>
+  <meta charset="utf-8" />
+    
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>
+    docker-compose基本用法 |  自在技术博客
+  </title>
+  <meta name="generator" content="hexo-theme-ayer">
+  
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" href="/dist/main.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css">
+  <link rel="stylesheet" href="/css/custom.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+  
+  
+
+  
+
+</head>
+
+</html>
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article id="post-docker-compose基本用法" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  docker-compose基本用法
+</h1>
+ 
+
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2019/09/08/docker-compose基本用法/" class="article-date">
+  <time datetime="2019-09-08T13:00:00.000Z" itemprop="datePublished">2019-09-08</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/kubernetes/">kubernetes</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> 字数统计:</span>
+            <span class="post-count">3.3k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> 阅读时长≈</span>
+            <span class="post-count">13 分钟</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <h1 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h1><p>Compose项目来源于之前的fig项目，使用python语言编写,与docker/swarm配合度很高。</p>
+<p>Compose 是 Docker 容器进行编排的工具，定义和运行多容器的应用，可以一条命令启动多个容器，使用Docker Compose不再需要使用shell脚本来启动容器。 </p>
+<p>Compose 通过一个配置文件来管理多个Docker容器，在配置文件中，所有的容器通过services来定义，然后使用docker-compose脚本来启动，停止和重启应用，和应用中的服务以及所有依赖服务的容器，非常适合组合使用多个容器进行开发的场景。</p>
+<h1 id="docker-compose安装"><a href="#docker-compose安装" class="headerlink" title="docker-compose安装"></a>docker-compose安装</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">curl -L <span class="string">"https://github.com/docker/compose/releases/download/1.24.1/docker-compose-<span class="variable">$(uname -s)</span>-<span class="variable">$(uname -m)</span>"</span> -o /usr/<span class="built_in">local</span>/bin/docker-compose</span><br><span class="line"></span><br><span class="line">chmod +x /usr/<span class="built_in">local</span>/bin/docker-compose</span><br><span class="line"></span><br><span class="line">ln -s /usr/<span class="built_in">local</span>/bin/docker-compose /usr/bin/docker-compose</span><br><span class="line"></span><br><span class="line">docker-compose --version</span><br></pre></td></tr></table></figure>
+
+<h1 id="mysql模板"><a href="#mysql模板" class="headerlink" title="mysql模板"></a>mysql模板</h1><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">version:</span> <span class="string">'2'</span></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line"><span class="attr">    mysql:</span></span><br><span class="line"><span class="attr">        network_mode:</span> <span class="string">"bridge"</span></span><br><span class="line"><span class="attr">        container_name:</span> <span class="string">"mysql"</span></span><br><span class="line"><span class="attr">        environment:</span></span><br><span class="line"><span class="attr">            MYSQL_ROOT_PASSWORD:</span> <span class="string">"123123"</span></span><br><span class="line"><span class="attr">            MYSQL_USER:</span> <span class="string">'test'</span></span><br><span class="line"><span class="attr">            MYSQL_PASS:</span> <span class="string">'123123'</span></span><br><span class="line"><span class="attr">        image:</span> <span class="string">"mysql:5.7"</span> </span><br><span class="line"><span class="attr">        restart:</span> <span class="string">always</span></span><br><span class="line"><span class="attr">        volumes:</span></span><br><span class="line"><span class="bullet">            -</span> <span class="string">"./db:/var/lib/mysql"</span></span><br><span class="line"><span class="bullet">            -</span> <span class="string">"./conf/my.cnf:/etc/my.cnf"</span></span><br><span class="line"><span class="bullet">            -</span> <span class="string">"./init:/docker-entrypoint-initdb.d/"</span></span><br><span class="line"><span class="attr">        ports:</span></span><br><span class="line"><span class="bullet">            -</span> <span class="string">"3306:3306"</span></span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>创建db、conf、init三个目录</li>
+<li>在conf目录下创建my.cnf配置文件</li>
+<li>在init目录下创建init.sql初始化文件</li>
+</ol>
+<p><font color="90EE90">my.cnf实例</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">[mysqld]</span><br><span class="line">user=mysql</span><br><span class="line">default-storage-engine=INNODB</span><br><span class="line">character-set-server=utf8</span><br><span class="line">[client]</span><br><span class="line">default-character-set=utf8</span><br><span class="line">[mysql]</span><br><span class="line">default-character-set=utf8</span><br></pre></td></tr></table></figure>
+
+<p><font color="90EE90">init.sql实例</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">use mysql;</span><br><span class="line">ALTER USER <span class="string">'root'</span>@<span class="string">'%'</span> IDENTIFIED WITH mysql_native_password BY <span class="string">'123123'</span>;</span><br><span class="line">create database <span class="built_in">test</span>;</span><br><span class="line">use <span class="built_in">test</span>;</span><br><span class="line">create table user</span><br><span class="line">(</span><br><span class="line">    id int auto_increment primary key,</span><br><span class="line">    username varchar(64) unique not null,</span><br><span class="line">    email varchar(120) unique not null,</span><br><span class="line">    password_hash varchar(128) not null,</span><br><span class="line">    avatar varchar(128) not null</span><br><span class="line">);</span><br><span class="line">insert into user values(1, <span class="string">"zhangsan"</span>,<span class="string">"test12345@qq.com"</span>,<span class="string">"passwd"</span>,<span class="string">"avaterpath"</span>);</span><br><span class="line">insert into user values(2, <span class="string">"lisi"</span>,<span class="string">"12345test@qq.com"</span>,<span class="string">"passwd"</span>,<span class="string">"avaterpath"</span>);</span><br></pre></td></tr></table></figure>
+
+<h1 id="nginx模板"><a href="#nginx模板" class="headerlink" title="nginx模板"></a>nginx模板</h1><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">version:</span> <span class="string">'2'</span></span><br><span class="line"><span class="attr">services:</span></span><br><span class="line"><span class="attr">  web:</span></span><br><span class="line"><span class="attr">    image:</span> <span class="string">nginx</span></span><br><span class="line"><span class="attr">    ports:</span> </span><br><span class="line"><span class="bullet">      -</span> <span class="string">"8080:80"</span></span><br><span class="line"><span class="attr">    container_name:</span> <span class="string">"web"</span></span><br><span class="line"><span class="attr">    networks:</span></span><br><span class="line"><span class="bullet">      -</span> <span class="string">dev</span></span><br><span class="line"></span><br><span class="line"><span class="attr">networks:</span></span><br><span class="line"><span class="attr">  dev:</span></span><br><span class="line"><span class="attr">    driver:</span> <span class="string">bridge</span></span><br></pre></td></tr></table></figure>
+
+<h1 id="基本语法"><a href="#基本语法" class="headerlink" title="基本语法"></a>基本语法</h1><h2 id="image"><a href="#image" class="headerlink" title="image"></a>image</h2><p>image 是指定服务的镜像名称或镜像 ID。如果镜像在本地不存在，Compose 将会尝试拉取这个镜像。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">services:</span><br><span class="line">  web:</span><br><span class="line">    image: hello-world</span><br></pre></td></tr></table></figure>
+
+<h2 id="build"><a href="#build" class="headerlink" title="build"></a>build</h2><p>服务除了可以基于指定的镜像，还可以基于一份 Dockerfile，在使用 up 启动之时执行构建任务，这个构建标签就是 build，它可以指定 Dockerfile 所在文件夹的路径。Compose 将会利用它自动构建这个镜像，然后使用这个镜像启动服务容器。</p>
+<p>build: /path/to/build/dir<br>也可以是相对路径，只要上下文确定就可以读取到 Dockerfile。</p>
+<p>build: ./dir<br>设定上下文根目录，然后以该目录为准指定 Dockerfile。</p>
+<p>build:<br>  context: ../<br>  dockerfile: path/of/Dockerfile<br>注意 build 都是一个目录，如果你要指定 Dockerfile 文件需要在 build 标签的子级标签中使用 dockerfile 标签指定，如上面的例子。<br>如果你同时指定了 image 和 build 两个标签，那么 Compose 会构建镜像并且把镜像命名为 image 后面的那个名字。</p>
+<p>build: ./dir<br>image: webapp:tag<br>既然可以在 docker-compose.yml 中定义构建任务，那么一定少不了 arg 这个标签，就像 Dockerfile 中的 ARG 指令，它可以在构建过程中指定环境变量，但是在构建成功后取消，在 docker-compose.yml 文件中也支持这样的写法：</p>
+<p>build:<br>  context: .<br>  args:<br>    buildno: 1<br>    password: secret<br>下面这种写法也是支持的，一般来说下面的写法更适合阅读。</p>
+<p>build:<br>  context: .<br>  args:<br>    - buildno=1<br>    - password=secret<br>与 ENV 不同的是，ARG 是允许空值的。例如：</p>
+<p>args:</p>
+<ul>
+<li>buildno</li>
+<li>password<br>这样构建过程可以向它们赋值。</li>
+</ul>
+<p>注意：YAML 的布尔值（true, false, yes, no, on, off）必须要使用引号引起来（单引号、双引号均可），否则会当成字符串解析。</p>
+<h2 id="command"><a href="#command" class="headerlink" title="command"></a>command</h2><p>使用 command 可以覆盖容器启动后默认执行的命令。</p>
+<p>command: bundle exec thin -p 3000<br>也可以写成类似 Dockerfile 中的格式：</p>
+<p>command: [bundle, exec, thin, -p, 3000]</p>
+<h2 id="container-name"><a href="#container-name" class="headerlink" title="container_name"></a>container_name</h2><p>前面说过 Compose 的容器名称格式是：&lt;项目名称&gt;&lt;服务名称&gt;&lt;序号&gt;<br>虽然可以自定义项目名称、服务名称，但是如果你想完全控制容器的命名，可以使用这个标签指定：</p>
+<p>container_name: app<br>这样容器的名字就指定为 app 了。</p>
+<h2 id="depends-on"><a href="#depends-on" class="headerlink" title="depends_on"></a>depends_on</h2><p>在使用 Compose 时，最大的好处就是少打启动命令，但是一般项目容器启动的顺序是有要求的，如果直接从上到下启动容器，必然会因为容器依赖问题而启动失败。<br>例如在没启动数据库容器的时候启动了应用容器，这时候应用容器会因为找不到数据库而退出，为了避免这种情况我们需要加入一个标签，就是 depends_on，这个标签解决了容器的依赖、启动先后的问题。<br>例如下面容器会先启动 redis 和 db 两个服务，最后才启动 web 服务：</p>
+<p>version: ‘2’<br>services:<br>  web:<br>    build: .<br>    depends_on:<br>      - db<br>      - redis<br>  redis:<br>    image: redis<br>  db:<br>    image: postgres<br>注意的是，默认情况下使用 docker-compose up web 这样的方式启动 web 服务时，也会启动 redis 和 db 两个服务，因为在配置文件中定义了依赖关系。</p>
+<h2 id="dns"><a href="#dns" class="headerlink" title="dns"></a>dns</h2><p>和 –dns 参数一样用途，格式如下：</p>
+<p>dns: 8.8.8.8<br>也可以是一个列表：</p>
+<p>dns:</p>
+<ul>
+<li>8.8.8.8</li>
+<li>9.9.9.9<br>此外 dns_search 的配置也类似：</li>
+</ul>
+<p>dns_search: example.com<br>dns_search:</p>
+<ul>
+<li>dc1.example.com</li>
+<li>dc2.example.com<h2 id="tmpfs"><a href="#tmpfs" class="headerlink" title="tmpfs"></a>tmpfs</h2>挂载临时目录到容器内部，与 run 的参数一样效果：</li>
+</ul>
+<p>tmpfs: /run<br>tmpfs:</p>
+<ul>
+<li>/run</li>
+<li>/tmp<h2 id="entrypoint"><a href="#entrypoint" class="headerlink" title="entrypoint"></a>entrypoint</h2>在 Dockerfile 中有一个指令叫做 ENTRYPOINT 指令，用于指定接入点，第四章有对比过与 CMD 的区别。<br>在 docker-compose.yml 中可以定义接入点，覆盖 Dockerfile 中的定义：</li>
+</ul>
+<p>entrypoint: /code/entrypoint.sh<br>格式和 Docker 类似，不过还可以写成这样：</p>
+<p>entrypoint:<br>    - php<br>    - -d<br>    - zend_extension=/usr/local/lib/php/extensions/no-debug-non-zts-20100525/xdebug.so<br>    - -d<br>    - memory_limit=-1<br>    - vendor/bin/phpunit</p>
+<h2 id="env-file"><a href="#env-file" class="headerlink" title="env_file"></a>env_file</h2><p>还记得前面提到的 .env 文件吧，这个文件可以设置 Compose 的变量。而在 docker-compose.yml 中可以定义一个专门存放变量的文件。<br>如果通过 docker-compose -f FILE 指定了配置文件，则 env_file 中路径会使用配置文件路径。</p>
+<p>如果有变量名称与 environment 指令冲突，则以后者为准。格式如下：</p>
+<p>env_file: .env<br>或者根据 docker-compose.yml 设置多个：</p>
+<p>env_file:</p>
+<ul>
+<li>./common.env</li>
+<li>./apps/web.env</li>
+<li>/opt/secrets.env<br>注意的是这里所说的环境变量是对宿主机的 Compose 而言的，如果在配置文件中有 build 操作，这些变量并不会进入构建过程中，如果要在构建中使用变量还是首选前面刚讲的 arg 标签。</li>
+</ul>
+<h2 id="environment"><a href="#environment" class="headerlink" title="environment"></a>environment</h2><p>与上面的 env_file 标签完全不同，反而和 arg 有几分类似，这个标签的作用是设置镜像变量，它可以保存变量到镜像里面，也就是说启动的容器也会包含这些变量设置，这是与 arg 最大的不同。<br>一般 arg 标签的变量仅用在构建过程中。而 environment 和 Dockerfile 中的 ENV 指令一样会把变量一直保存在镜像、容器中，类似 docker run -e 的效果。</p>
+<p>environment:<br>  RACK_ENV: development<br>  SHOW: ‘true’<br>  SESSION_SECRET:</p>
+<p>environment:</p>
+<ul>
+<li>RACK_ENV=development</li>
+<li>SHOW=true</li>
+<li>SESSION_SECRET<h2 id="expose"><a href="#expose" class="headerlink" title="expose"></a>expose</h2>这个标签与Dockerfile中的EXPOSE指令一样，用于指定暴露的端口，但是只是作为一种参考，实际上docker-compose.yml的端口映射还得ports这样的标签。</li>
+</ul>
+<p>expose:</p>
+<ul>
+<li>“3000”</li>
+<li>“8000”<h2 id="external-links"><a href="#external-links" class="headerlink" title="external_links"></a>external_links</h2>在使用Docker过程中，我们会有许多单独使用docker run启动的容器，为了使Compose能够连接这些不在docker-compose.yml中定义的容器，我们需要一个特殊的标签，就是external_links，它可以让Compose项目里面的容器连接到那些项目配置外部的容器（前提是外部容器中必须至少有一个容器是连接到与项目内的服务的同一个网络里面）。<br>格式如下：</li>
+</ul>
+<p>external_links:</p>
+<ul>
+<li>redis_1</li>
+<li>project_db_1:mysql</li>
+<li>project_db_1:postgresql<h2 id="extra-hosts"><a href="#extra-hosts" class="headerlink" title="extra_hosts"></a>extra_hosts</h2>添加主机名的标签，就是往/etc/hosts文件中添加一些记录，与Docker client的–add-host类似：</li>
+</ul>
+<p>extra_hosts:</p>
+<ul>
+<li>“somehost:162.242.195.82”</li>
+<li>“otherhost:50.31.209.229”<br>启动之后查看容器内部hosts：</li>
+</ul>
+<p>162.242.195.82  somehost<br>50.31.209.229   otherhost</p>
+<h2 id="labels"><a href="#labels" class="headerlink" title="labels"></a>labels</h2><p>向容器添加元数据，和Dockerfile的LABEL指令一个意思，格式如下：</p>
+<p>labels:<br>  com.example.description: “Accounting webapp”<br>  com.example.department: “Finance”<br>  com.example.label-with-empty-value: “”<br>labels:</p>
+<ul>
+<li>“com.example.description=Accounting webapp”</li>
+<li>“com.example.department=Finance”</li>
+<li>“com.example.label-with-empty-value”<h2 id="links"><a href="#links" class="headerlink" title="links"></a>links</h2>还记得上面的depends_on吧，那个标签解决的是启动顺序问题，这个标签解决的是容器连接问题，与Docker client的–link一样效果，会连接到其它服务中的容器。<br>格式如下：</li>
+</ul>
+<p>links:</p>
+<ul>
+<li>db</li>
+<li>db:database</li>
+<li>redis<br>使用的别名将会自动在服务容器中的/etc/hosts里创建。例如：</li>
+</ul>
+<p>172.12.2.186  db<br>172.12.2.186  database<br>172.12.2.187  redis<br>相应的环境变量也将被创建。</p>
+<h2 id="logging"><a href="#logging" class="headerlink" title="logging"></a>logging</h2><p>这个标签用于配置日志服务。格式如下：</p>
+<p>logging:<br>  driver: syslog<br>  options:<br>    syslog-address: “tcp://192.168.0.42:123”<br>默认的driver是json-file。只有json-file和journald可以通过docker-compose logs显示日志，其他方式有其他日志查看方式，但目前Compose不支持。对于可选值可以使用options指定。<br>有关更多这方面的信息可以阅读官方文档：<br><a href="https://docs.docker.com/engine/admin/logging/overview/" target="_blank" rel="noopener">https://docs.docker.com/engine/admin/logging/overview/</a></p>
+<h2 id="pid"><a href="#pid" class="headerlink" title="pid"></a>pid</h2><p>pid: “host”<br>将PID模式设置为主机PID模式，跟主机系统共享进程命名空间。容器使用这个标签将能够访问和操纵其他容器和宿主机的名称空间。</p>
+<h2 id="ports"><a href="#ports" class="headerlink" title="ports"></a>ports</h2><p>映射端口的标签。<br>使用HOST:CONTAINER格式或者只是指定容器的端口，宿主机会随机映射端口。</p>
+<p>ports:</p>
+<ul>
+<li>“3000”</li>
+<li>“8000:8000”</li>
+<li>“49100:22”</li>
+<li>“127.0.0.1:8001:8001”<br>注意：当使用HOST:CONTAINER格式来映射端口时，如果你使用的容器端口小于60你可能会得到错误得结果，因为YAML将会解析xx:yy这种数字格式为60进制。所以建议采用字符串格式。</li>
+</ul>
+<h2 id="security-opt"><a href="#security-opt" class="headerlink" title="security_opt"></a>security_opt</h2><p>为每个容器覆盖默认的标签。简单说来就是管理全部服务的标签。比如设置全部服务的user标签值为USER。</p>
+<p>security_opt:</p>
+<ul>
+<li>label:user:USER</li>
+<li>label:role:ROLE<h2 id="stop-signal"><a href="#stop-signal" class="headerlink" title="stop_signal"></a>stop_signal</h2>设置另一个信号来停止容器。在默认情况下使用的是SIGTERM停止容器。设置另一个信号可以使用stop_signal标签。</li>
+</ul>
+<p>stop_signal: SIGUSR1</p>
+<h2 id="volumes"><a href="#volumes" class="headerlink" title="volumes"></a>volumes</h2><p>挂载一个目录或者一个已存在的数据卷容器，可以直接使用 [HOST:CONTAINER] 这样的格式，或者使用 [HOST:CONTAINER:ro] 这样的格式，后者对于容器来说，数据卷是只读的，这样可以有效保护宿主机的文件系统。<br>Compose的数据卷指定路径可以是相对路径，使用 . 或者 .. 来指定相对目录。<br>数据卷的格式可以是下面多种形式：</p>
+<p>volumes:<br>  // 只是指定一个路径，Docker 会自动在创建一个数据卷（这个路径是容器内部的）。</p>
+<ul>
+<li><p>/var/lib/mysql</p>
+<p>// 使用绝对路径挂载数据卷</p>
+</li>
+<li><p>/opt/data:/var/lib/mysql</p>
+<p>// 以 Compose 配置文件为中心的相对路径作为数据卷挂载到容器。</p>
+</li>
+<li><p>./cache:/tmp/cache</p>
+<p>// 使用用户的相对路径（~/ 表示的目录是 /home/&lt;用户目录&gt;/ 或者 /root/）。</p>
+</li>
+<li><p>~/configs:/etc/configs/:ro</p>
+<p>// 已经存在的命名的数据卷。</p>
+</li>
+<li><p>datavolume:/var/lib/mysql<br>如果你不使用宿主机的路径，你可以指定一个volume_driver。</p>
+</li>
+</ul>
+<p>volume_driver: mydriver</p>
+<h2 id="volumes-from"><a href="#volumes-from" class="headerlink" title="volumes_from"></a>volumes_from</h2><p>从其它容器或者服务挂载数据卷，可选的参数是 :ro或者 :rw，前者表示容器只读，后者表示容器对数据卷是可读可写的。默认情况下是可读可写的。</p>
+<p>volumes_from:</p>
+<ul>
+<li>service_name</li>
+<li>service_name:ro</li>
+<li>container:container_name</li>
+<li>container:container_name:rw<h2 id="cap-add-cap-drop"><a href="#cap-add-cap-drop" class="headerlink" title="cap_add, cap_drop"></a>cap_add, cap_drop</h2>添加或删除容器的内核功能。详细信息在前面容器章节有讲解，此处不再赘述。</li>
+</ul>
+<p>cap_add:</p>
+<ul>
+<li>ALL</li>
+</ul>
+<p>cap_drop:</p>
+<ul>
+<li>NET_ADMIN</li>
+<li>SYS_ADMIN<h2 id="cgroup-parent"><a href="#cgroup-parent" class="headerlink" title="cgroup_parent"></a>cgroup_parent</h2>指定一个容器的父级cgroup。</li>
+</ul>
+<p>cgroup_parent: m-executor-abcd</p>
+<h2 id="devices"><a href="#devices" class="headerlink" title="devices"></a>devices</h2><p>设备映射列表。与Docker client的–device参数类似。</p>
+<p>devices:</p>
+<ul>
+<li>“/dev/ttyUSB0:/dev/ttyUSB0”<h2 id="extends"><a href="#extends" class="headerlink" title="extends"></a>extends</h2>这个标签可以扩展另一个服务，扩展内容可以是来自在当前文件，也可以是来自其他文件，相同服务的情况下，后来者会有选择地覆盖原有配置。</li>
+</ul>
+<p>extends:<br>  file: common.yml<br>  service: webapp<br>用户可以在任何地方使用这个标签，只要标签内容包含file和service两个值就可以了。file的值可以是相对或者绝对路径，如果不指定file的值，那么Compose会读取当前YML文件的信息。<br>更多的操作细节在后面的12.3.4小节有介绍。</p>
+<h2 id="network-mode"><a href="#network-mode" class="headerlink" title="network_mode"></a>network_mode</h2><p>网络模式，与Docker client的–net参数类似，只是相对多了一个service:[service name] 的格式。<br>例如：</p>
+<p>network_mode: “bridge”<br>network_mode: “host”<br>network_mode: “none”<br>network_mode: “service:[service name]”<br>network_mode: “container:[container name/id]”<br>可以指定使用服务或者容器的网络。</p>
+<h2 id="networks"><a href="#networks" class="headerlink" title="networks"></a>networks</h2><p>加入指定网络，格式如下：</p>
+<p>services:<br>  some-service:<br>    networks:<br>     - some-network<br>     - other-network<br>关于这个标签还有一个特别的子标签aliases，这是一个用来设置服务别名的标签，例如：</p>
+<p>services:<br>  some-service:<br>    networks:<br>      some-network:<br>        aliases:<br>         - alias1<br>         - alias3<br>      other-network:<br>        aliases:<br>         - alias2<br>相同的服务可以在不同的网络有不同的别名。</p>
+<h2 id="其它"><a href="#其它" class="headerlink" title="其它"></a>其它</h2><p>还有这些标签：cpu_shares, cpu_quota, cpuset, domainname, hostname, ipc, mac_address, mem_limit, memswap_limit, privileged, read_only, restart, shm_size, stdin_open, tty, user, working_dir<br>上面这些都是一个单值的标签，类似于使用docker run的效果。</p>
+<p>cpu_shares: 73<br>cpu_quota: 50000<br>cpuset: 0,1</p>
+<p>user: postgresql<br>working_dir: /code</p>
+<p>domainname: foo.com<br>hostname: foo<br>ipc: host<br>mac_address: 02:42:ac:11:65:43</p>
+<p>mem_limit: 1000000000<br>memswap_limit: 2000000000<br>privileged: true</p>
+<p>restart: always</p>
+<p>read_only: true<br>shm_size: 64M<br>stdin_open: true<br>tty: true</p>
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>版权声明： </strong>
+          本博客所有文章除特别声明外，著作权归作者所有。转载请注明出处！
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://hxqxiaoqi.gitee.io/2019/09/08/docker-compose基本用法/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/docker/">docker</a></li></ul>
+
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2019/09/09/ansible基本配置/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            ansible基本配置
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2019/09/07/Elasticsearch + Logstash + filebeat + redis + Kibana/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">ELK部署</div>
+      </a>
+    
+  </nav>
+
+  
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2015-2020
+        <i class="ri-heart-fill heart_icon"></i> 自在
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        
+        由 <a href="https://hexo.io" target="_blank">Hexo</a> 强力驱动
+        <span class="division">|</span>
+        主题 - <a href="https://github.com/Shen-Yu/hexo-theme-ayer" target="_blank">Ayer</a>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>访问人数:<span id="busuanzi_value_site_uv"></span>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>浏览次数:<span id="busuanzi_value_page_pv"></span></span>
+</span></span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+        <script type="text/javascript" src="https://s9.cnzz.com/z_stat.php?id=1278069914&amp;web_id=1278069914"></script>
+        
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="自在技术博客"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags/友情链接/">链接</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search" title="搜索">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <script>
+      if (window.matchMedia("(max-width: 768px)").matches) {
+        document.querySelector('.content').classList.remove('on');
+        document.querySelector('.sidebar').classList.remove('on');
+      }
+    </script>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    <script src="/js/jquery-2.0.3.min.js"></script>
+<script src="/js/lazyload.min.js"></script>
+<!-- Tocbot -->
+
+<script src="/js/tocbot.min.js"></script>
+<script>
+  tocbot.init({
+    tocSelector: '.tocbot',
+    contentSelector: '.article-entry',
+    headingSelector: 'h1, h2, h3, h4, h5, h6',
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: 'main',
+    positionFixedSelector: '.tocbot',
+    positionFixedClass: 'is-position-fixed',
+    fixedSidebarOffset: 'auto'
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css">
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+<script src="/dist/main.js"></script>
+<!-- ImageViewer -->
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script>
+
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+
+<link rel="stylesheet" href="/css/clipboard.css">
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+
+
+<!-- CanvasBackground -->
+
+
+    
+  </div>
+</body>
+
+</html>

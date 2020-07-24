@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-CN">
+
+
+<head>
+  <meta charset="utf-8" />
+    
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>
+    kafka 集群搭建 |  自在技术博客
+  </title>
+  <meta name="generator" content="hexo-theme-ayer">
+  
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" href="/dist/main.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css">
+  <link rel="stylesheet" href="/css/custom.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+  
+  
+
+  
+
+</head>
+
+</html>
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article id="post-kafka 集群搭建" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  kafka 集群搭建
+</h1>
+ 
+
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2020/03/25/kafka 集群搭建/" class="article-date">
+  <time datetime="2020-03-25T09:07:00.000Z" itemprop="datePublished">2020-03-25</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/大数据/">大数据</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> 字数统计:</span>
+            <span class="post-count">2.4k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> 阅读时长≈</span>
+            <span class="post-count">9 分钟</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <h1 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h1><p>kafka 是一个分布式的消息队列系统，消息以topic分类传输，生产者往topic发送消息时，消息会被分散到topic的不同分区中，消费者以组的形式消费topic中的数据，一个topic的一个分区，只能被同一个组里的一个消费者消费，但同一个消费者，可以消费多个分区数据，每个组自己维护topic每个分区的消费偏移量。</p>
+<p>kafka 不能保证不同分区消息的消费顺序，因此若对于消息消费顺序有要求，必须确保该类消息处于同一分区，可以通过发送消息时，指定相同key来处理。</p>
+<h1 id="搭建"><a href="#搭建" class="headerlink" title="搭建"></a>搭建</h1><h2 id="实验环境"><a href="#实验环境" class="headerlink" title="实验环境"></a>实验环境</h2><p><font color="32CD32">配置hosts文件，让集群服务器间互相使用主机名访问</font></p>
+<table>
+<thead>
+<tr>
+<th align="center">服务器ip</th>
+<th align="center">主机名</th>
+<th align="center">服务</th>
+<th align="center">安装目录</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">192.168.40.100</td>
+<td align="center">kafka0</td>
+<td align="center">kafka，zookeeper，jdk8</td>
+<td align="center">/opt</td>
+</tr>
+<tr>
+<td align="center">192.168.40.101</td>
+<td align="center">kafka1</td>
+<td align="center">kafka，zookeeper，jdk8</td>
+<td align="center">/opt</td>
+</tr>
+<tr>
+<td align="center">192.168.40.102</td>
+<td align="center">kafka2</td>
+<td align="center">kafka，zookeeper，jdk8</td>
+<td align="center">/opt</td>
+</tr>
+</tbody></table>
+<h2 id="jdk8-安装"><a href="#jdk8-安装" class="headerlink" title="jdk8 安装"></a>jdk8 安装</h2><p>所有节点安装：<a href="https://hxqxiaoqi.gitee.io/2019/06/04/JDK1.8环境安装-linux/">jdk 安装教程</a></p>
+<h2 id="zookeeper-集群安装"><a href="#zookeeper-集群安装" class="headerlink" title="zookeeper 集群安装"></a>zookeeper 集群安装</h2><p><a href="https://hxqxiaoqi.gitee.io/2020/03/26/zookeeper%20集群搭建/">zk集群安装教程</a></p>
+<h2 id="kafka-集群安装"><a href="#kafka-集群安装" class="headerlink" title="kafka 集群安装"></a>kafka 集群安装</h2><p><font color="32CD32">在 kafka0 主机上配置</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 下载</span></span><br><span class="line">wget http://archive.apache.org/dist/kafka/2.4.0/kafka_2.13-2.4.0.tgz</span><br><span class="line"></span><br><span class="line">tar xf kafka_2.13-2.4.0.tgz -C /opt</span><br><span class="line"><span class="built_in">cd</span> /opt/kafka_2.13-2.4.0/config</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">修改 server.properties 文件</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 集群识别号，每台服务器上的kafka都不能相同</span></span><br><span class="line">broker.id=0</span><br><span class="line"></span><br><span class="line"><span class="comment"># 监听地址，填写本机地址</span></span><br><span class="line">listeners=PLAINTEXT://kafka0:9092</span><br><span class="line"></span><br><span class="line"><span class="comment"># 外网监听地址，返回给客户端的地址，填写本机地址</span></span><br><span class="line">advertised.listeners=PLAINTEXT://kafka0:9092</span><br><span class="line"></span><br><span class="line"><span class="comment"># 数据存储目录,默认/tmp下，建议不要设置到/tmp下，否则有可能服务崩溃</span></span><br><span class="line">log.dirs=/data/kafka-logs</span><br><span class="line"></span><br><span class="line"><span class="comment"># zookeeper地址</span></span><br><span class="line">zookeeper.connect=kafka0:2181,kafka1:2181,kafka2:2181</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">修改/opt/kafka_2.13-2.4.0/bin/kafka-server-start.sh 文件</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> [ <span class="string">"x<span class="variable">$KAFKA_HEAP_OPTS</span>"</span> = <span class="string">"x"</span> ]; <span class="keyword">then</span></span><br><span class="line">    <span class="built_in">export</span> KAFKA_HEAP_OPTS=<span class="string">"-Xmx1G -Xms1G"</span></span><br><span class="line">    <span class="comment"># 添加以下这条设置，用于kafka-manager监控</span></span><br><span class="line">    <span class="built_in">export</span> JMX_PORT=<span class="string">"9999"</span></span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">复制 kafka 目录到其它集群服务器上，并修改相应配置</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 如果没有免密，需要输入密码</span></span><br><span class="line">scp -r /opt/kafka_2.13-2.4.0 root@kafka1:/opt</span><br><span class="line">scp -r /opt/kafka_2.13-2.4.0 root@kafka1:/opt</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">启动与关闭</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 前台启动</span></span><br><span class="line">/opt/kafka_2.13-2.4.0/bin/kafka-server-start.sh /opt/kafka_2.13-2.4.0/config/server.properties</span><br><span class="line"></span><br><span class="line"><span class="comment"># 后台启动</span></span><br><span class="line">/opt/kafka_2.13-2.4.0/bin/kafka-server-start.sh -daemon /opt/kafka_2.13-2.4.0/config/server.properties</span><br><span class="line"></span><br><span class="line"><span class="comment"># 关闭</span></span><br><span class="line">/opt/kafka_2.13-2.4.0/bin/kafka-server-stop.sh</span><br></pre></td></tr></table></figure>
+
+<h2 id="kafka-manager安装"><a href="#kafka-manager安装" class="headerlink" title="kafka-manager安装"></a>kafka-manager安装</h2><p>kafka-manager用于监控kafka集群状态</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/yahoo/CMAK/archive/3.0.0.4.tar.gz</span><br></pre></td></tr></table></figure>
+
+<h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> /opt/kafka_2.13-2.4.0/bin/</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建topic，--replication-facto：副本，--partitions：分区</span></span><br><span class="line">./kafka-topics.sh --create --zookeeper kafka0:2181,kafka1:2181,kafka2:2181 --replication-factor 3 --partitions 1 --topic kafka-test</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看top信息</span></span><br><span class="line">./kafka-topics.sh --describe --zookeeper kafka0:2181,kafka1:2181,kafka2:2181 --topic kafka-test</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启动生产者</span></span><br><span class="line">./kafka-console-producer.sh --broker-list kafka0:9092,kafka1:9092,kafka2:9092 --topic kafka-test</span><br><span class="line"></span><br><span class="line"><span class="comment"># 启动消费者，--from-beginning：从头开始消费</span></span><br><span class="line">./kafka-console-consumer.sh --bootstrap-server kafka0:9092,kafka1:9092,kafka2:9092 --topic kafka-test --from-beginning</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看topic列表</span></span><br><span class="line">./kafka-topics.sh --list --zookeeper kafka0:2181,kafka1:2181,kafka2:2181</span><br><span class="line"></span><br><span class="line"><span class="comment"># 删除topic</span></span><br><span class="line">./kafka-topics.sh --zookeeper kafka0:2181,kafka1:2181,kafka2:2181 --delete  --topic kafka-test</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看topic策略</span></span><br><span class="line">bin/kafka-configs.sh --zookeeper 192.168.10.111:2181,192.168.10.112:2181,192.168.10.113:2181 --describe --entity-type topics --entity-name TOPIC_DW_USER_STATS</span><br><span class="line"></span><br><span class="line"><span class="comment"># 设置topic策略，保存时间</span></span><br><span class="line">bin/kafka-configs.sh --zookeeper 192.168.10.111:2181,192.168.10.112:2181,192.168.10.113:2181 --entity-type topics --entity-name TOPIC_DW_USER_STATS --alter --add-config retention.ms=10000</span><br><span class="line"></span><br><span class="line"><span class="comment"># 取消topic策略</span></span><br><span class="line">bin/kafka-configs.sh --zookeeper 192.168.10.111:2181,192.168.10.112:2181,192.168.10.113:2181 --entity-type topics --entity-name TOPIC_DW_USER_STATS --alter --delete-config retention.ms</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看所有消费者</span></span><br><span class="line">bin/kafka-consumer-groups.sh --bootstrap-server 192.168.10.111:9092,192.168.10.112:9092,192.168.10.113:9092 --list</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看指定消费者信息</span></span><br><span class="line">bin/kafka-consumer-groups.sh --describe --bootstrap-server 192.168.10.111:9092,192.168.10.112:9092,192.168.10.113:9092 --group member-star-member-count-job</span><br></pre></td></tr></table></figure>
+
+<h2 id="server-properties-配置文件详解"><a href="#server-properties-配置文件详解" class="headerlink" title="server.properties 配置文件详解"></a>server.properties 配置文件详解</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># broker在集群中的唯一标识，不能为负数</span></span><br><span class="line">broker.id</span><br><span class="line"></span><br><span class="line"><span class="comment"># 数据存放的目录，这个目录可以配置为“，”逗号分割的表达式，下面的num.io.threads要大于这个目录的个数，如果配置多个目录，新创建topic消息持久化的地方是，当前以逗号分割的目录中，分区数最少的那一个</span></span><br><span class="line">log.dirs</span><br><span class="line"></span><br><span class="line"><span class="comment"># 相当于下面的host.name+port</span></span><br><span class="line">listeners	PLAINTEXT://hostname:port</span><br><span class="line"></span><br><span class="line"><span class="comment"># 外网客户端访问返回的地址 PLAINTEXT://hostname:port</span></span><br><span class="line">advertised.listeners	</span><br><span class="line"></span><br><span class="line"><span class="comment"># broker的主机地址，若是设置了，那么会绑定到这个地址上，若是没有，会绑定到所有的接口上，并将其中之一发送到ZK</span></span><br><span class="line">host.name	</span><br><span class="line"></span><br><span class="line"><span class="comment"># 监听端口</span></span><br><span class="line">port</span><br><span class="line"></span><br><span class="line"><span class="comment"># 消息最大字节</span></span><br><span class="line">message.max.bytes</span><br><span class="line"></span><br><span class="line"><span class="comment"># broker处理网络消息的最大线程数</span></span><br><span class="line">num.network.threads</span><br><span class="line"></span><br><span class="line"><span class="comment"># broker处理磁盘IO的线程数，数值应该大于你的目录数</span></span><br><span class="line">num.io.threads</span><br><span class="line"></span><br><span class="line"><span class="comment"># 处理后台任务的线程数，例如过期消息文件的删除等</span></span><br><span class="line">background.threads</span><br><span class="line"></span><br><span class="line"><span class="comment"># 等待IO线程处理的请求队列最大数，若是等待IO的请求超过这个数值，那么会停止接受外部消息，应该是一种自我保护机制</span></span><br><span class="line">queued.max.requests</span><br><span class="line"></span><br><span class="line"><span class="comment"># socket的发送缓冲区</span></span><br><span class="line">socket.send.buffer.bytes</span><br><span class="line"></span><br><span class="line"><span class="comment"># socket的接受缓冲区</span></span><br><span class="line">socket.receive.buffer.bytes</span><br><span class="line"></span><br><span class="line"><span class="comment"># socket请求的最大字节数值，防止serverOOM，message.max.bytes必然要小于socket.request.max.bytes，会被topic创建时的指定参数覆盖</span></span><br><span class="line">socket.request.max.bytes</span><br><span class="line"></span><br><span class="line"><span class="comment"># topic的分区是以一堆segment文件存储的，这个控制每个segment的大小，会被topic创建时的指定参数覆盖</span></span><br><span class="line">log.segment.bytes</span><br><span class="line"></span><br><span class="line"><span class="comment"># 在日志segment没有达到log.segment.bytes设置的大小，但超过设定时间，也会强制新建一个segment。会被 topic创建时的指定参数覆盖</span></span><br><span class="line">log.roll.hours</span><br><span class="line"></span><br><span class="line"><span class="comment"># 日志清理策略选择有：delete和compact主要针对过期数据的处理，或是日志文件达到限制的额度，会被 topic创建时的指定参数覆盖</span></span><br><span class="line">log.cleanup.policy</span><br><span class="line"></span><br><span class="line"><span class="comment"># 数据存储的最大时间超过这个时间会根据log.cleanup.policy设置的策略处理数据，也就是消费端能够多久去消费数据，log.retention.bytes和log.retention.minutes任意一个达到要求，都会执行删除，会被topic创建时的指定参数覆盖</span></span><br><span class="line">log.retention.minutes</span><br><span class="line"></span><br><span class="line"><span class="comment"># topic每个分区的最大文件大小，一个topic的大小限制 =分区数*log.retention.bytes。-1没有大小限log.retention.bytes和log.retention.minutes任意一个达到要求，都会执行删除，会被topic创建时的指定参数覆盖</span></span><br><span class="line">log.retention.bytes</span><br><span class="line"></span><br><span class="line"><span class="comment"># 文件大小检查的周期时间，是否执行 log.cleanup.policy中设置的策略</span></span><br><span class="line">log.retention.check.interval.ms</span><br><span class="line"></span><br><span class="line"><span class="comment"># 是否开启日志压缩</span></span><br><span class="line">log.cleaner.enable</span><br><span class="line"></span><br><span class="line"><span class="comment"># 日志压缩运行的线程数</span></span><br><span class="line">log.cleaner.threads</span><br><span class="line"></span><br><span class="line"><span class="comment"># 日志压缩时每秒处理的最大大小</span></span><br><span class="line">log.cleaner.io.max.bytes.per.second</span><br><span class="line"></span><br><span class="line"><span class="comment"># 日志压缩去重时候的缓存空间，在空间允许的情况下，越大越好</span></span><br><span class="line">log.cleaner.dedupe.buffer.size</span><br><span class="line"></span><br><span class="line"><span class="comment"># 日志清理时候用到的IO块大小一般不需要修改</span></span><br><span class="line">log.cleaner.io.buffer.size</span><br><span class="line"></span><br><span class="line"><span class="comment"># 日志清理中hash表的扩大因子一般不需要修改</span></span><br><span class="line">log.cleaner.io.buffer.load.factor</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查是否触发日志清理的间隔</span></span><br><span class="line">log.cleaner.backoff.ms</span><br><span class="line"></span><br><span class="line"><span class="comment"># 日志清理的频率控制，越大意味着更高效的清理，同时会存在一些空间上的浪费，会被topic创建时的指定参数覆盖</span></span><br><span class="line">log.cleaner.min.cleanable.ratio</span><br><span class="line"></span><br><span class="line"><span class="comment"># 对于压缩的日志保留的最长时间，也是客户端消费消息的最长时间，与log.retention.minutes的区别在于一个控制未压缩数据，一个控制压缩后的数据。会被topic创建时的指定参数覆盖</span></span><br><span class="line">log.cleaner.delete.retention.ms</span><br><span class="line"></span><br><span class="line"><span class="comment"># 对于segment日志的索引文件大小限制，会被topic创建时的指定参数覆盖</span></span><br><span class="line">log.index.size.max.bytes</span><br><span class="line"></span><br><span class="line"><span class="comment"># 当执行一个fetch操作后，需要一定的空间来扫描最近的offset大小，设置越大，代表扫描速度越快，但是也更好内存，一般情况下不需要搭理这个参数</span></span><br><span class="line">log.index.interval.bytes</span><br><span class="line"></span><br><span class="line"><span class="comment"># log文件”sync”到磁盘之前累积的消息条数,因为磁盘IO操作是一个慢操作,但又是一个”数据可靠性"的必要手段,所以此参数的设置,需要在"数据可靠性"与"性能"之间做必要的权衡.如果此值过大,将会导致每次"fsync"的时间较长(IO阻塞),如果此值过小,将会导致"fsync"的次数较多,这也意味着整体的client请求有一定的延迟.物理server故障,将会导致没有fsync的消息丢失.</span></span><br><span class="line">log.flush.interval.messages</span><br><span class="line"></span><br><span class="line"><span class="comment"># 检查是否需要固化到硬盘的时间间隔</span></span><br><span class="line">log.flush.scheduler.interval.ms</span><br><span class="line"></span><br><span class="line"><span class="comment"># 仅仅通过interval来控制消息的磁盘写入时机,是不足的.此参数用于控制"fsync"的时间间隔,如果消息量始终没有达到阀值,但是离上一次磁盘同步的时间间隔达到阀值,也将触发.</span></span><br><span class="line">log.flush.interval.ms</span><br><span class="line"></span><br><span class="line"><span class="comment"># 文件在索引中清除后保留的时间一般不需要去修改</span></span><br><span class="line">log.delete.delay.ms</span><br><span class="line"></span><br><span class="line"><span class="comment"># 控制上次固化硬盘的时间点，以便于数据恢复一般不需要去修改</span></span><br><span class="line">log.flush.offset.checkpoint.interval.ms </span><br><span class="line"></span><br><span class="line"><span class="comment"># 消息时间戳类型，CreateTime 和 LogAppendTime ；前者表示producer创建这条消息的时间；后者表示broker接收到这条消息的时间(严格来说，是leader broker将这条消息写入到log的时间</span></span><br><span class="line">log.message.timestamp.type	</span><br><span class="line"></span><br><span class="line"><span class="comment"># 是否允许自动创建topic，若是false，就需要通过命令创建topic</span></span><br><span class="line">auto.create.topics.enable </span><br><span class="line"></span><br><span class="line"><span class="comment"># 每个topic的分区个数，会被topic创建时的指定参数覆盖</span></span><br><span class="line">num.partitions</span><br></pre></td></tr></table></figure>
+
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>版权声明： </strong>
+          本博客所有文章除特别声明外，著作权归作者所有。转载请注明出处！
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://hxqxiaoqi.gitee.io/2020/03/25/kafka 集群搭建/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/kafka/">kafka</a></li></ul>
+
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2020/03/26/zookeeper 集群搭建/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            zookeeper 集群搭建
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2020/03/20/hbash分布式搭建/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">hbase 分布式搭建</div>
+      </a>
+    
+  </nav>
+
+  
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2015-2020
+        <i class="ri-heart-fill heart_icon"></i> 自在
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        
+        由 <a href="https://hexo.io" target="_blank">Hexo</a> 强力驱动
+        <span class="division">|</span>
+        主题 - <a href="https://github.com/Shen-Yu/hexo-theme-ayer" target="_blank">Ayer</a>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>访问人数:<span id="busuanzi_value_site_uv"></span>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>浏览次数:<span id="busuanzi_value_page_pv"></span></span>
+</span></span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+        <script type="text/javascript" src="https://s9.cnzz.com/z_stat.php?id=1278069914&amp;web_id=1278069914"></script>
+        
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="自在技术博客"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags/友情链接/">链接</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search" title="搜索">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <script>
+      if (window.matchMedia("(max-width: 768px)").matches) {
+        document.querySelector('.content').classList.remove('on');
+        document.querySelector('.sidebar').classList.remove('on');
+      }
+    </script>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    <script src="/js/jquery-2.0.3.min.js"></script>
+<script src="/js/lazyload.min.js"></script>
+<!-- Tocbot -->
+
+<script src="/js/tocbot.min.js"></script>
+<script>
+  tocbot.init({
+    tocSelector: '.tocbot',
+    contentSelector: '.article-entry',
+    headingSelector: 'h1, h2, h3, h4, h5, h6',
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: 'main',
+    positionFixedSelector: '.tocbot',
+    positionFixedClass: 'is-position-fixed',
+    fixedSidebarOffset: 'auto'
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css">
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+<script src="/dist/main.js"></script>
+<!-- ImageViewer -->
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script>
+
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+
+<link rel="stylesheet" href="/css/clipboard.css">
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+
+
+<!-- CanvasBackground -->
+
+
+    
+  </div>
+</body>
+
+</html>

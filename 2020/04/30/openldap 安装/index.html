@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-CN">
+
+
+<head>
+  <meta charset="utf-8" />
+    
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>
+    openldap 安装 |  自在技术博客
+  </title>
+  <meta name="generator" content="hexo-theme-ayer">
+  
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" href="/dist/main.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css">
+  <link rel="stylesheet" href="/css/custom.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+  
+  
+
+  
+
+</head>
+
+</html>
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article id="post-openldap 安装" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  openldap 安装
+</h1>
+ 
+
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2020/04/30/openldap 安装/" class="article-date">
+  <time datetime="2020-04-30T04:27:43.000Z" itemprop="datePublished">2020-04-30</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/linux基础/">linux基础</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> 字数统计:</span>
+            <span class="post-count">1.5k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> 阅读时长≈</span>
+            <span class="post-count">6 分钟</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <h1 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h1><p><font color="32CD32">LDAP</font>（Lightweight Directory Access Protocol）是基于X.500标准的轻量目录访问协议。它比X.500具有更快的查询速度和更低的资源消耗，精简灵活，支持TCP/IP协议。LDAP为用户管理提供了统一认证服务，解决了办公环境中多套用户认证和项目管理系统相互独立分散的难题，而OpenLDAP 是LDAP的开源实现。</p>
+<p>其实就是各个支持ldap协议的应用，统一账号的地方，而不需要在每个应用上注册管理单独账号。</p>
+<p><font color="32CD32">cn ：</font>common name 用户名</p>
+<p>对象的属性为CN，例如一个用户的名字为：张三，那么“张三”就是一个CN。</p>
+<p><font color="32CD32">ou : </font>OrganizationUnit 组织单位</p>
+<p>o和ou都是ldap目录结构的一个属性，建立目录的时候可选新建o，ou 等。在配置我司交换设备ldap的时候具体是配置ou，o还是cn等，要具体看ldap服务器的相应目录是什么属性。</p>
+<p><font color="32CD32">o：</font>organizationName 组织名</p>
+<p><font color="32CD32">uid: </font>userid</p>
+<p>对象的属性为uid，例如我司一个员工的名字为：zsq，他的UID为：z02691，ldap查询的时候可以根据cn，也可以根据uid。配置ldap查询的时候需要考虑用何种查询方式。我司两种方式都支持，具体我司设备配置根据何种方式查询需要有ldap服务器的相关配置来决定。</p>
+<p><font color="32CD32">dc：</font>域组件</p>
+<p>DC类似于dns中的每个元素，例如h3c.com，“.”符号分开的两个单词可以看成两个DC，</p>
+<p><font color="32CD32">dn：</font>Distinguished Name</p>
+<p>类似于DNS，DN与DNS的区别是：组成DN的每个值都有一个属性类型，例如:H3c.com是一个dns，那么用dn表示为：dc=h3c,dc=com 级别越高越靠后。H3c和com的属性都是DC。DN可以表示为ldap的某个目录，也可以表示成目录中的某个对象，这个对象可以是用户等。</p>
+<blockquote>
+<p>例如：CN=test,OU=developer,DC=domainname,DC=com </p>
+<p>在上面的代码中 cn=test 可能代表一个用户名，ou=developer 代表一个 active directory 中的组织单位。这句话的含义可能就是说明 test 这个对象处在domainname.com 域的 developer 组织单元中。</p>
+</blockquote>
+<h1 id="安装步骤"><a href="#安装步骤" class="headerlink" title="安装步骤"></a>安装步骤</h1><p><font color="32CD32">实验环境</font></p>
+<table>
+<thead>
+<tr>
+<th align="center">主机名</th>
+<th align="center">IP</th>
+<th align="center">安装服务</th>
+<th align="center">系统版本</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">server</td>
+<td align="center">192.168.40.100</td>
+<td align="center">openldap openldap-servers openldap-clients</td>
+<td align="center">centos7.4</td>
+</tr>
+<tr>
+<td align="center">client</td>
+<td align="center">192.168.40.101</td>
+<td align="center">openldap openldap-servers openldap-clients</td>
+<td align="center">centos7.4</td>
+</tr>
+</tbody></table>
+<p><font color="32CD32">关闭防火墙和selinux</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">systemctl stop firewalld</span><br><span class="line">systemctl <span class="built_in">disable</span> firewalld</span><br><span class="line">setenforce 0</span><br><span class="line">sed -i <span class="string">"s/SELINUX=enforcing/SELINUX=disabled/g"</span> /etc/selinux/config</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">配置epel源</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum install epel-release -y</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">OpenLDAP安装</font></p>
+<p>注：以下操作没有特殊说明，均在server主机操作。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">yum install openldap openldap-servers openldap-clients -y</span><br><span class="line">cp /usr/share/openldap-servers/DB_CONFIG.example /var/lib/ldap/DB_CONFIG</span><br><span class="line">systemctl start slapd</span><br><span class="line">systemctl <span class="built_in">enable</span> slapd</span><br><span class="line">systemctl status slapd</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">配置管理员密码</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">slappasswd -s 111111</span><br><span class="line">&#123;SSHA&#125;AjIAg98NFvRRlhoBOvsfVqMeAGZwi5O9</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">生成的密码写入到 rootpwd.ldif 文件中</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">cat &lt;&lt;EOF&gt;rootpwd.ldif</span><br><span class="line">dn: olcDatabase=&#123;0&#125;config,cn=config</span><br><span class="line">changetype: modify</span><br><span class="line">add: olcRootPW</span><br><span class="line">olcRootPW: &#123;SSHA&#125;AjIAg98NFvRRlhoBOvsfVqMeAGZwi5O9</span><br><span class="line">EOF</span><br><span class="line"></span><br><span class="line"><span class="comment"># 相关参数说明：</span></span><br><span class="line"><span class="comment"># olcRootPW参数值为slappasswd命令的结果输出。</span></span><br><span class="line"><span class="comment"># olcRootPW: &#123;SSHA&#125;AjIAg98NFvRRlhoBOvsfVqMeAGZwi5O9指定了属性值。</span></span><br><span class="line"><span class="comment"># ldif文件是LDAP中数据交换的文件格式。文件内容采用的是key-value形式。注意value后面不能有空格。</span></span><br><span class="line"><span class="comment"># olc（OnlineConfiguration）表示写入LDAP后立即生效。</span></span><br><span class="line"><span class="comment"># changetype: modify表示修改entry，此外changetype的值也可以是add,delete等。</span></span><br><span class="line"><span class="comment"># add: olcRootPW表示对这个entry新增olcRootPW的属性。</span></span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">写入配置</font></p>
+<p>执行命令，添加 rootpwd.ldif 配置 到 openldap 中：ldap所有修改操作都需要编写单独的文件，切记不要直接去修改原有的配置。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ldapadd -Y EXTERNAL -H ldapi:/// -f rootpwd.ldif</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">导入schema</font></p>
+<p>schema包含支持特殊场景的相关属性，可选择性导入或全部导入</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ls /etc/openldap/schema/*.ldif | <span class="keyword">while</span> <span class="built_in">read</span> i; <span class="keyword">do</span> ldapadd -Y EXTERNAL -H ldapi:/// -f <span class="variable">$i</span>; <span class="keyword">done</span></span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">新建默认域配置文件</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">cat &lt;&lt;EOF&gt; domain.ldif</span><br><span class="line">dn: olcDatabase=&#123;1&#125;monitor,cn=config</span><br><span class="line">changetype: modify</span><br><span class="line">replace: olcAccess</span><br><span class="line">olcAccess: &#123;0&#125;to * by dn.base=<span class="string">"gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth"</span> <span class="built_in">read</span> by dn.base=<span class="string">"cn=Manager,dc=mydomain,dc=com"</span> <span class="built_in">read</span> by * none</span><br><span class="line"></span><br><span class="line"><span class="comment"># olcDatabase=&#123;2&#125;hdb，改配置名需要到/etc/openldap/slapd.d/cn\=config/目录查看，不是都一样的，需要修改</span></span><br><span class="line">dn: olcDatabase=&#123;2&#125;hdb,cn=config</span><br><span class="line">changetype: modify</span><br><span class="line">replace: olcSuffix</span><br><span class="line">olcSuffix: dc=mydomain,dc=com</span><br><span class="line"></span><br><span class="line">dn: olcDatabase=&#123;2&#125;hdb,cn=config</span><br><span class="line">changetype: modify</span><br><span class="line">replace: olcRootDN</span><br><span class="line">olcRootDN: cn=Manager,dc=mydomain,dc=com</span><br><span class="line"></span><br><span class="line">dn: olcDatabase=&#123;2&#125;hdb,cn=config</span><br><span class="line">changetype: modify</span><br><span class="line">add: olcRootPW</span><br><span class="line"><span class="comment"># 上面生成的密码填写到这，或可以重新生成一个填写，与管理员密码区分</span></span><br><span class="line">olcRootPW: &#123;SSHA&#125;7AA7V1xy++LVZcUbBWYYM9/81wfODiIK</span><br><span class="line"></span><br><span class="line">dn: olcDatabase=&#123;2&#125;hdb,cn=config</span><br><span class="line">changetype: modify</span><br><span class="line">add: olcAccess</span><br><span class="line">olcAccess: &#123;0&#125;to attrs=userPassword,shadowLastChange by dn=<span class="string">"cn=Manager,dc=mydomain,dc=com"</span> write by anonymous auth by self write by * none</span><br><span class="line">olcAccess: &#123;1&#125;to dn.base=<span class="string">""</span> by * <span class="built_in">read</span></span><br><span class="line">olcAccess: &#123;2&#125;to * by dn=<span class="string">"cn=Manager,dc=mydomain,dc=com"</span> write by * <span class="built_in">read</span></span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">写入配置</font></p>
+<p>执行命令，添加 domain.ldif 配置 到 openldap 中</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ldapmodify -Y EXTERNAL -H ldapi:/// -f domain.ldif</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">添加基本信息</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">cat &lt;&lt;EOF&gt; basedomain.ldif</span><br><span class="line">dn: dc=mydomain,dc=com</span><br><span class="line">objectClass: top</span><br><span class="line">objectClass: dcObject</span><br><span class="line">objectclass: organization</span><br><span class="line">o: mydomain com</span><br><span class="line">dc: mydomain</span><br><span class="line"></span><br><span class="line">dn: cn=Manager,dc=mydomain,dc=com</span><br><span class="line">objectClass: organizationalRole</span><br><span class="line">cn: Manager</span><br><span class="line">description: Directory Manager</span><br><span class="line"></span><br><span class="line">dn: ou=People,dc=mydomain,dc=com</span><br><span class="line">objectClass: organizationalUnit</span><br><span class="line">ou: People</span><br><span class="line"></span><br><span class="line">dn: ou=Group,dc=mydomain,dc=com</span><br><span class="line">objectClass: organizationalUnit</span><br><span class="line">ou: Group</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">写入</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ldapadd -x -D cn=Manager,dc=mydomain,dc=com -W -f basedomain.ldif</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">查看信息</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ldapsearch -LLL -W -x -D <span class="string">"cn=Manager,dc=mydomain,dc=com"</span> -H ldap://localhost -b<span class="string">"dc=mydomain,dc=com"</span></span><br></pre></td></tr></table></figure>
+
+<p>如果没有报错，则openldap服务端安装成功。</p>
+<h1 id="安装-ldapadmin-web-管理"><a href="#安装-ldapadmin-web-管理" class="headerlink" title="安装 ldapadmin web 管理"></a>安装 ldapadmin web 管理</h1><p>在OpenLDAP运行节点安装ldapadmin工具包</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum install -y httpd php php-mbstring php-pear phpldapadmin</span><br></pre></td></tr></table></figure>
+
+<p>修改 /etc/httpd/httpd.conf</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># line 86: 修改admin邮箱地址</span></span><br><span class="line">ServerAdmin root@openldap.mydomain.world</span><br><span class="line"></span><br><span class="line"><span class="comment"># line 95: 修改主机域名</span></span><br><span class="line">ServerName www.mydomain.com:80</span><br><span class="line"></span><br><span class="line"><span class="comment"># line 152: 修改成如下内容：</span></span><br><span class="line">AllowOverride All</span><br><span class="line"></span><br><span class="line"><span class="comment"># line 165: 添加可访问目录名的文件名称</span></span><br><span class="line">DirectoryIndex index.html index.cgi index.php</span><br><span class="line"></span><br><span class="line"><span class="comment"># 在文件末尾增加如下两部分内容</span></span><br><span class="line"><span class="comment"># server's response header</span></span><br><span class="line">ServerTokens Prod</span><br><span class="line"></span><br><span class="line"><span class="comment"># keepalive is ON</span></span><br><span class="line">KeepAlive On</span><br></pre></td></tr></table></figure>
+
+<p>启动Apache服务并设置开机自启动</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">systemctl start httpd</span><br><span class="line">systemctl <span class="built_in">enable</span> httpd</span><br></pre></td></tr></table></figure>
+
+<p>编辑 /etc/phpldapadmin/config.php</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#注释掉398行，并取消397行的注释，修改后内容如下：</span></span><br><span class="line"><span class="variable">$servers</span>-&gt;setValue(<span class="string">'login'</span>,<span class="string">'attr'</span>,<span class="string">'dn'</span>);</span><br><span class="line">// <span class="variable">$servers</span>-&gt;setValue(<span class="string">'login'</span>,<span class="string">'attr'</span>,<span class="string">'uid'</span>);</span><br></pre></td></tr></table></figure>
+
+<p>编辑 /etc/httpd/conf.d/phpldapadmin.conf</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;Directory/usr/share/phpldapadmin/htdocs&gt;</span><br><span class="line">  &lt;IfModule mod_authz_core.c&gt;</span><br><span class="line">    <span class="comment"># Apache 2.4</span></span><br><span class="line">    Require <span class="built_in">local</span></span><br><span class="line">    Require all granted</span><br><span class="line">  &lt;/IfModule&gt;</span><br></pre></td></tr></table></figure>
+
+<p>重启Apache服务使配置生效</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl restart httpd</span><br></pre></td></tr></table></figure>
+
+<p>访问</p>
+<p>账号：cn=Manager,dc=mydomain,dc=com</p>
+<p>密码：111111</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl http://192.168.40.100/ldapadmin/</span><br></pre></td></tr></table></figure>
+
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>版权声明： </strong>
+          本博客所有文章除特别声明外，著作权归作者所有。转载请注明出处！
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://hxqxiaoqi.gitee.io/2020/04/30/openldap 安装/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/ldap/">ldap</a></li></ul>
+
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2020/05/14/docker修改存储目录和连接私库/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            docker修改存储目录和连接私库
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2020/04/26/flink 部署/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">flink 部署</div>
+      </a>
+    
+  </nav>
+
+  
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2015-2020
+        <i class="ri-heart-fill heart_icon"></i> 自在
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        
+        由 <a href="https://hexo.io" target="_blank">Hexo</a> 强力驱动
+        <span class="division">|</span>
+        主题 - <a href="https://github.com/Shen-Yu/hexo-theme-ayer" target="_blank">Ayer</a>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>访问人数:<span id="busuanzi_value_site_uv"></span>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>浏览次数:<span id="busuanzi_value_page_pv"></span></span>
+</span></span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+        <script type="text/javascript" src="https://s9.cnzz.com/z_stat.php?id=1278069914&amp;web_id=1278069914"></script>
+        
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="自在技术博客"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags/友情链接/">链接</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search" title="搜索">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <script>
+      if (window.matchMedia("(max-width: 768px)").matches) {
+        document.querySelector('.content').classList.remove('on');
+        document.querySelector('.sidebar').classList.remove('on');
+      }
+    </script>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    <script src="/js/jquery-2.0.3.min.js"></script>
+<script src="/js/lazyload.min.js"></script>
+<!-- Tocbot -->
+
+<script src="/js/tocbot.min.js"></script>
+<script>
+  tocbot.init({
+    tocSelector: '.tocbot',
+    contentSelector: '.article-entry',
+    headingSelector: 'h1, h2, h3, h4, h5, h6',
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: 'main',
+    positionFixedSelector: '.tocbot',
+    positionFixedClass: 'is-position-fixed',
+    fixedSidebarOffset: 'auto'
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css">
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+<script src="/dist/main.js"></script>
+<!-- ImageViewer -->
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script>
+
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+
+<link rel="stylesheet" href="/css/clipboard.css">
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+
+
+<!-- CanvasBackground -->
+
+
+    
+  </div>
+</body>
+
+</html>

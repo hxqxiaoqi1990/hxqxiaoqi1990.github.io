@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-CN">
+
+
+<head>
+  <meta charset="utf-8" />
+    
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>
+    hbase 分布式搭建 |  自在技术博客
+  </title>
+  <meta name="generator" content="hexo-theme-ayer">
+  
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" href="/dist/main.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css">
+  <link rel="stylesheet" href="/css/custom.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+  
+  
+
+  
+
+</head>
+
+</html>
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article id="post-hbash分布式搭建" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  hbase 分布式搭建
+</h1>
+ 
+
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2020/03/20/hbash分布式搭建/" class="article-date">
+  <time datetime="2020-03-20T10:00:00.000Z" itemprop="datePublished">2020-03-20</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/大数据/">大数据</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> 字数统计:</span>
+            <span class="post-count">2.5k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> 阅读时长≈</span>
+            <span class="post-count">10 分钟</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <h1 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h1><p><font color="32CD32">HBase 简介</font></p>
+<p>1、HBase是Apache Hadoop的数据库，能够对大型数据提供随机、实时的读写访问，是Google的BigTable的开源实现。</p>
+<p>2、HBase的目标是存储并处理大型的数据，更具体地说仅用普通的硬件配置，能够处理成千上万的行和列所组成的大型数据库。<br>3、HBase是一个开源的、分布式的、多版本的、面向列的存储模型。可以直接使用本地文件系统，也可使用Hadoop的HDFS文件存储系统。</p>
+<p>为了提高数据的可靠性和系统的健壮性，并且发挥HBase处理大型数据的能力，还是使用HDFS作为文件存储系统更佳。</p>
+<p>另外，HBase存储的是松散型数据，具体来说，HBase存储的数据介于映射（key/value）和关系型数据之间。HBase存储的数据从逻辑上看就是一张很大的表，并且它的数据列可以根据需要动态增加。每一个cell中的数据又可以有多个版本（通过时间戳来区别），从下图来看，HBase还具有 “ 向下提供存储，向上提供运算 “ 的特点。</p>
+<p><font color="32CD32">HBase 体系结构</font></p>
+<p>HBase的服务器体系结构遵从简单的主从服务器架构，它由HRegion Server群和HBase Master服务器构成。</p>
+<p>HBase Master负责管理所有的HRegion Server，而HBase中的所有RegionServer都是通过ZooKeeper来协调，并处理HBase服务器运行期间可能遇到的错误。</p>
+<p>HBase Master Server本身并不存储HBase中的任何数据，HBase逻辑上的表可能会被划分成多个Region，然后存储到HRegion Server群中。HBase Master Server中存储的是从数据到HRegion Server的映射。</p>
+<p><code>Client</code>：HBase Client 使用HBase的RPC机制与HMaster和HRegionServer进行通信：对于管理类操作，Client与HMaster进行RPC；对于数据读写类操作，Client与HRegionServer进行RPC。</p>
+<p><code>Zookeeper</code>：Zookeeper Quorum中除了存储了-ROOT-表的地址和HMaster的地址，HRegionServer也会把自己以Ephemeral方式注册到 Zookeeper中，使得HMaster可以随时感知到各个HRegionServer的健康状态。此外，Zookeeper也避免了HMaster的 单点问题。</p>
+<p><code>HMaster</code>：每台HRegionServer都会与HMaster进行通信，HMaster的主要任务就是要告诉每台HRegion Server它要维护哪些HRegion。当一台新的HRegionServer登录到HMaster时，HMaster会告诉它等待分配数据。而当一台HRegion死机时，HMaster会把它负责的HRegion标记为未分配，然后再把它们分配到其他的HRegion Server中。<br>HBase已经解决了HMaster单点故障问题（SPFO），并且HBase中可以启动多个HMaster，那么它就能够通过Zookeeper来保证系统中总有一个Master在运行。HMaster在功能上主要负责Table和Region的管理工作。</p>
+<p> <code>HRegion</code>：当表的大小超过设置值得时候，HBase会自动地将表划分为不同的区域，每个区域包含所有行的一个子集。对用户来说，每个表是一堆数据的集合，靠主键来区分。从物理上来说，一张表被拆分成了多块，每一块就是一个HRegion。我们用表名+开始/结束主键来区分每一个HRegion，一个HRegion会保存一个表里面某段连续的数据，从开始主键到结束主键，一张完整的表格是保存在多个HRegion上面。 </p>
+<ul>
+<li>管理用户对Table的增删改查操作</li>
+<li>管理HRegionServer的负载均衡，调整Region分布</li>
+<li>在Region Split后，负责新Region的分配</li>
+<li>在HRegionServer停机后，负责失效HRegionServer上的Region迁移</li>
+</ul>
+<p><code>HRegionServer</code>：主要负责响应用户I/O请求，向HDFS文件系统中读写数据，是HBase中最核心的模块。HRegionServer内部管理了一系列HRegion对象，每个HRegion对应了Table中的一个 Region，HRegion中由多个HStore组成。每个HStore对应了Table中的一个Column Family的存储，可以看出每个Column Family其实就是一个集中的存储单元，因此最好将具备共同IO特性的column放在一个Column Family中，这样最高效。</p>
+<p><code>HStore</code>：存储是HBase存储的核心，其中由两部分组成，一部分是MemStore，一部分是StoreFiles。 MemStore是Sorted Memory Buffer，用户写入的数据首先会放入MemStore，当MemStore满了以后会Flush成一个StoreFile(底层实现是HFile)， 当StoreFile文件数量增长到一定阈值，会触发Compact合并操作，将多个StoreFiles合并成一个StoreFile，合并过程中会进行版本合并和数据删除，因此可以看出HBase其实只有增加数据，所有的更新和删除操作都是在后续的compact过程中进行的，这使得用户的写操作只要 进入内存中就可以立即返回，保证了HBase I/O的高性能。当StoreFiles Compact后，会逐步形成越来越大的StoreFile，当单个StoreFile大小超过一定阈值后，会触发Split操作，同时把当前 Region Split成2个Region，父Region会下线，新Split出的2个孩子Region会被HMaster分配到相应的HRegionServer 上，使得原先1个Region的压力得以分流到2个Region上。</p>
+<h1 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h1><h2 id="hadoop-安装"><a href="#hadoop-安装" class="headerlink" title="hadoop 安装"></a>hadoop 安装</h2><p><a href="https://hxqxiaoqi.gitee.io/2020/03/20/hadoop%20完全分布式搭建/#hadoop-安装">hadoop 分布式集群安装教程</a> ：hbase是基于hadoop的hdfs所设计的NoSql数据库，所以需要先安装hadoop集群</p>
+<h2 id="zookeeper-安装"><a href="#zookeeper-安装" class="headerlink" title="zookeeper 安装"></a>zookeeper 安装</h2><p><a href="https://hxqxiaoqi.gitee.io/2019/09/03/zookeeper安装/">zookeeper 安装教程</a></p>
+<h2 id="hbase-安装"><a href="#hbase-安装" class="headerlink" title="hbase 安装"></a>hbase 安装</h2><p><font color="32CD32">在 192.168.40.100 上操作：</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 下载</span></span><br><span class="line">wget https://mirror.bit.edu.cn/apache/hbase/stable/hbase-2.2.3-bin.tar.gz</span><br><span class="line">tar xf hbase-2.2.3-bin.tar.gz -C /opt/</span><br><span class="line"><span class="built_in">cd</span> /opt/hbase-2.2.3/conf/</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">修改 hbase-env.sh，添加以下内容：</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># jdk 环境变量</span></span><br><span class="line"><span class="built_in">export</span> JAVA_HOME=/opt/jdk1.8.0_221</span><br><span class="line"><span class="comment"># hbase 配置目录环境变量</span></span><br><span class="line"><span class="built_in">export</span> HBASE_CLASSPATH=/opt/hbase-2.2.3/conf</span><br><span class="line"><span class="comment"># 关闭内部zookeeper，使用外部zookeeper的配置</span></span><br><span class="line"><span class="built_in">export</span> HBASE_MANAGES_ZK=<span class="literal">false</span></span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">修改 hbase-site.xml ：</font></p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">   <span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">     <span class="tag">&lt;<span class="name">name</span>&gt;</span>hbase.unsafe.stream.capability.enforce<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">     <span class="tag">&lt;<span class="name">value</span>&gt;</span>false<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">   <span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">name</span>&gt;</span>hbase.zookeeper.property.clientPort<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">value</span>&gt;</span>2181<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">name</span>&gt;</span>hbase.zookeeper.quorum<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">value</span>&gt;</span>hadoop0,hadoop1,hadoop2<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">name</span>&gt;</span>hbase.zookeeper.property.dataDir<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">value</span>&gt;</span>/var/zookeeper<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">name</span>&gt;</span>hbase.rootdir<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">value</span>&gt;</span>hdfs://hadoop0:9000/hbase<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">name</span>&gt;</span>hbase.cluster.distributed<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">value</span>&gt;</span>true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">修改 regionservers ：</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">hadoop0</span><br><span class="line">hadoop1</span><br><span class="line">hadoop2</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">配置高可用</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> <span class="string">"hadoop1"</span> &gt; /opt/hbase-2.2.3/conf/backup-masters</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">分发配置</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">scp -r /opt/hbase-2.2.3/ root@hadoop1:/opt/</span><br><span class="line">scp -r /opt/hbase-2.2.3/ root@hadoop2:/opt/</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">启动与关闭</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 在master上启动集群</span></span><br><span class="line">/opt/hbase-2.2.3/bin/start-hbase.sh</span><br><span class="line">/opt/hbase-2.2.3/bin/stop-hbase.sh</span><br><span class="line"></span><br><span class="line"><span class="comment"># 单独启动master</span></span><br><span class="line">bin/hbase-daemon.sh start master</span><br><span class="line"><span class="comment"># 单独启动HRegionServer</span></span><br><span class="line">bin/hbase-daemon.sh start regionserver</span><br></pre></td></tr></table></figure>
+
+<p><font color="32CD32">访问</font></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl http://192.168.40.100:16010/</span><br></pre></td></tr></table></figure>
+
+<h2 id="hbase-常用操作命令"><a href="#hbase-常用操作命令" class="headerlink" title="hbase 常用操作命令"></a>hbase 常用操作命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 登录hbase数据库</span></span><br><span class="line"><span class="built_in">cd</span> /opt/hbase-2.2.3/bin/</span><br><span class="line">./hbase shell</span><br><span class="line"></span><br><span class="line"><span class="comment"># 列出当前数据库中的所有namespace：</span></span><br><span class="line">&gt; list_namespace</span><br><span class="line"></span><br><span class="line"><span class="comment"># 列出hbase中的表：</span></span><br><span class="line">&gt; list</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看帮助信息，找到创建的语法格式，注意要加上引号：</span></span><br><span class="line">&gt; <span class="built_in">help</span> <span class="string">'create_namespace'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建namespace：</span></span><br><span class="line">&gt; create_namespace <span class="string">'nstest'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 描述查看namespace的结构：</span></span><br><span class="line">&gt; drop_namespace <span class="string">'nstest'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建表，表名user，列簇info：</span></span><br><span class="line">示例：create <span class="string">'ns1:t1'</span>, &#123;NAME =&gt; <span class="string">'f1'</span>, VERSIONS =&gt; 5&#125;</span><br><span class="line"><span class="comment"># 1）ns1指的就是namespace</span></span><br><span class="line"><span class="comment"># 2）t1代表table_name</span></span><br><span class="line"><span class="comment"># 3）ns1:t1这样的格式就是唯一确定了一张表</span></span><br><span class="line"><span class="comment"># 4）在hbase中=&gt;符号表示等于</span></span><br><span class="line"><span class="comment"># 5）f指的是列簇，建表时要指定一个列簇</span></span><br><span class="line"><span class="comment"># 6）VERSIONS =&gt; 5代表同时能够存储的版本数</span></span><br><span class="line"><span class="comment"># 7）可以指定多个列簇，一个大括号中只能指定一个NAME（变量）</span></span><br><span class="line"><span class="comment"># 8）一个列簇就是一个大括号</span></span><br><span class="line"><span class="comment"># 9）在建表的时候可以指定在某个namespace下，比如：ns1:t1，没有指定就是在默认的数据库下面创建</span></span><br><span class="line">&gt; create <span class="string">'user'</span>,<span class="string">'info'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看表user的结构：</span></span><br><span class="line">&gt; describe <span class="string">'user'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 向表user中插入数据。表名user，rowkey为10001，列簇info，列名name等，cell值为zhangsan：</span></span><br><span class="line">&gt; put <span class="string">'user'</span>,<span class="string">'10001'</span>,<span class="string">'info:name'</span>,<span class="string">'zhangsan'</span></span><br><span class="line">&gt; put <span class="string">'user'</span>,<span class="string">'10001'</span>,<span class="string">'info:age'</span>,<span class="string">'25'</span></span><br><span class="line">&gt; put <span class="string">'user'</span>,<span class="string">'10001'</span>,<span class="string">'info:sex'</span>,<span class="string">'male'</span></span><br><span class="line">&gt; put <span class="string">'user'</span>,<span class="string">'10001'</span>,<span class="string">'info:address'</span>,<span class="string">'shanghai'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># HBase中的数据查询有三种方式：</span></span><br><span class="line"><span class="comment"># 1）依据rowkey查询，这是最快的，使用get命令；</span></span><br><span class="line"><span class="comment"># 2）依据范围查询，这是最常用的，使用scan range命令；</span></span><br><span class="line"><span class="comment"># 3）全表扫描，这是最慢的，使用scan命令。</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查询user表中rowkey为10001的信息：</span></span><br><span class="line">&gt; get <span class="string">'user'</span>,<span class="string">'10001'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查询user表中rowkey为10001，列簇为info的信息：</span></span><br><span class="line">&gt; get <span class="string">'user'</span>,<span class="string">'10001'</span>,<span class="string">'info'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查询user表中rowkey为10001，列簇为info，列名为name的信息：</span></span><br><span class="line">&gt; get <span class="string">'user'</span>,<span class="string">'10001'</span>,<span class="string">'info:name'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 插入rowkey为10002的信息：</span></span><br><span class="line">&gt; put <span class="string">'user'</span>,<span class="string">'10002'</span>,<span class="string">'info:name'</span>,<span class="string">'wangwu'</span></span><br><span class="line">&gt; put <span class="string">'user'</span>,<span class="string">'10002'</span>,<span class="string">'info:age'</span>,<span class="string">'30'</span></span><br><span class="line">&gt; put <span class="string">'user'</span>,<span class="string">'10002'</span>,<span class="string">'info:tel'</span>,<span class="string">'25354212'</span></span><br><span class="line">&gt; put <span class="string">'user'</span>,<span class="string">'10002'</span>,<span class="string">'info:qq'</span>,<span class="string">'232523551'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 全表扫描：</span></span><br><span class="line">&gt; scan</span><br><span class="line"></span><br><span class="line"><span class="comment"># 全表扫描user表：</span></span><br><span class="line">&gt; scan <span class="string">'user'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 插入user表中列簇为10003的信息：</span></span><br><span class="line">&gt; put <span class="string">'user'</span>,<span class="string">'10003'</span>,<span class="string">'info:name'</span>,<span class="string">'zhaoliu'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 范围查询：查询user表中的name列和age列的信息：</span></span><br><span class="line">&gt; scan <span class="string">'user'</span>,&#123;COLUMNS =&gt; [<span class="string">'info:name'</span>,<span class="string">'info:age'</span>]&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 范围查询：查询user表中起始rowkey为10002开始的行信息：</span></span><br><span class="line">&gt; scan <span class="string">'user'</span>, &#123;STARTROW=&gt;<span class="string">'10002'</span>&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># STARTROW代表开始的行号，大括号中的所有变量都必须是大写：</span></span><br><span class="line">&gt; scan <span class="string">'ns1:t1'</span>, &#123;COLUMNS =&gt; [<span class="string">'c1'</span>, <span class="string">'c2'</span>], LIMIT =&gt; 10, STARTROW =&gt; <span class="string">'xyz'</span>&#125;</span><br><span class="line">&gt; scan <span class="string">'nstest:tb1'</span>, &#123;STARTROW =&gt; <span class="string">'20170521_10002'</span>&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># STOPROW代表结束的行号，包头不包尾：</span></span><br><span class="line">&gt; scan <span class="string">'nstest:tb1'</span>, &#123;STARTROW =&gt; <span class="string">'20170521_10001'</span>,STOPROW =&gt; <span class="string">'20170521_10003'</span>&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 删除user表中rowkey为10001，列簇为info，列名为name，值为zhangsan的数据（可能该值有多个版本）：</span></span><br><span class="line">&gt; delete <span class="string">'user'</span>,<span class="string">'10001'</span>,<span class="string">'info:name'</span>,<span class="string">'zhangsan'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 删除user表中rowkey为10001，列簇为info，列名为name的列数据：全表扫描user表：查看结果</span></span><br><span class="line">&gt; delete <span class="string">'user'</span>,<span class="string">'10001'</span>,<span class="string">'info:name'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 删除user表中rowkey为10001的全部信息：全表扫描user表：查看结果</span></span><br><span class="line">&gt; deleteall <span class="string">'user'</span>,<span class="string">'10001'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 禁用user表：</span></span><br><span class="line">&gt; <span class="built_in">disable</span> <span class="string">'user'</span></span><br><span class="line"><span class="comment"># 启用user表：</span></span><br><span class="line">&gt; <span class="built_in">enable</span> <span class="string">'user'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 删除user表：</span></span><br><span class="line">&gt; drop <span class="string">'user'</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 退出hbase shell命令行：</span></span><br><span class="line">&gt; <span class="built_in">exit</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 删除g开头的表,\ny：自动确认</span></span><br><span class="line"><span class="built_in">echo</span> -e <span class="string">"disable_all 'g.*'\ny"</span> | /data/hbase-2.2.3/bin/hbase shell -n</span><br><span class="line"><span class="built_in">echo</span> -e <span class="string">"drop_all 'g.*'\ny"</span> | /data/hbase-2.2.3/bin/hbase shell -n</span><br></pre></td></tr></table></figure>
+
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>版权声明： </strong>
+          本博客所有文章除特别声明外，著作权归作者所有。转载请注明出处！
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://hxqxiaoqi.gitee.io/2020/03/20/hbash分布式搭建/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/hadoop/">hadoop</a></li></ul>
+
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2020/03/25/kafka 集群搭建/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            kafka 集群搭建
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2020/03/20/hadoop 完全分布式搭建/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">hadoop完全分布式搭建</div>
+      </a>
+    
+  </nav>
+
+  
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2015-2020
+        <i class="ri-heart-fill heart_icon"></i> 自在
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        
+        由 <a href="https://hexo.io" target="_blank">Hexo</a> 强力驱动
+        <span class="division">|</span>
+        主题 - <a href="https://github.com/Shen-Yu/hexo-theme-ayer" target="_blank">Ayer</a>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>访问人数:<span id="busuanzi_value_site_uv"></span>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>浏览次数:<span id="busuanzi_value_page_pv"></span></span>
+</span></span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+        <script type="text/javascript" src="https://s9.cnzz.com/z_stat.php?id=1278069914&amp;web_id=1278069914"></script>
+        
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="自在技术博客"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags/友情链接/">链接</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search" title="搜索">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <script>
+      if (window.matchMedia("(max-width: 768px)").matches) {
+        document.querySelector('.content').classList.remove('on');
+        document.querySelector('.sidebar').classList.remove('on');
+      }
+    </script>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    <script src="/js/jquery-2.0.3.min.js"></script>
+<script src="/js/lazyload.min.js"></script>
+<!-- Tocbot -->
+
+<script src="/js/tocbot.min.js"></script>
+<script>
+  tocbot.init({
+    tocSelector: '.tocbot',
+    contentSelector: '.article-entry',
+    headingSelector: 'h1, h2, h3, h4, h5, h6',
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: 'main',
+    positionFixedSelector: '.tocbot',
+    positionFixedClass: 'is-position-fixed',
+    fixedSidebarOffset: 'auto'
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css">
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+<script src="/dist/main.js"></script>
+<!-- ImageViewer -->
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script>
+
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+
+<link rel="stylesheet" href="/css/clipboard.css">
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+
+
+<!-- CanvasBackground -->
+
+
+    
+  </div>
+</body>
+
+</html>

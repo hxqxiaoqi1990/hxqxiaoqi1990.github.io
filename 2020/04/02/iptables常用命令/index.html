@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-CN">
+
+
+<head>
+  <meta charset="utf-8" />
+    
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>
+    iptables常用命令 |  自在技术博客
+  </title>
+  <meta name="generator" content="hexo-theme-ayer">
+  
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  <link rel="stylesheet" href="/dist/main.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css">
+  <link rel="stylesheet" href="/css/custom.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+  
+  
+
+  
+
+</head>
+
+</html>
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article id="post-iptables常用命令" class="article article-type-post" itemscope itemprop="blogPost" data-scroll-reveal>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  iptables常用命令
+</h1>
+ 
+
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2020/04/02/iptables常用命令/" class="article-date">
+  <time datetime="2020-04-02T13:29:43.000Z" itemprop="datePublished">2020-04-02</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/linux基础/">linux基础</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> 字数统计:</span>
+            <span class="post-count">3.1k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> 阅读时长≈</span>
+            <span class="post-count">13 分钟</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <p><strong>1、删除现有规则</strong></p>
+<p>在开始建立新的规则之前，您可能需要清理所有默认规则和现有规则。使用<strong>iptables</strong>如下所示的命令来做这个。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">iptables -F 　　　　　　<span class="comment">#警告：当前命令后将切断linux对外的一切端口请求，请确保你还能连接到vnc或主机上</span></span><br><span class="line">(or)</span><br><span class="line">iptables --flush</span><br><span class="line"></span><br><span class="line"><span class="comment"># 删除单条记录</span></span><br><span class="line">iptables -nL --line-number</span><br><span class="line">iptables -D INPUT 2</span><br></pre></td></tr></table></figure>
+
+<p><strong>2、设置默认链策略</strong></p>
+<p>默认的<strong>iptables</strong>策略是ACCEPT。将此更改为如下所示。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">iptables -P INPUT DROP</span><br><span class="line">iptables -P FORWARD DROP</span><br><span class="line">iptables -P OUTPUT DROP</span><br></pre></td></tr></table></figure>
+
+<p>当将INPUT和OUTPUT默认策略作为DROP时，对于每一个防火墙规则要求都应该定义两条规则。即一个INPUT和一个OUTPUT。<br>如果信任内部用户，则可以忽略上面OUTPUT的设置。默认情况下，不要丢弃所有OUTPUT的数据包。在这种情况下，对于每一个防火墙规则的要求，你只需要定义一个规则。即定义规则传入，因为传出是接受所有数据包。</p>
+<p><strong>3、阻止一个特定的IP地址</strong></p>
+<p>在我们做其他规则前，如果你想阻止一个特定的IP地址，你应该先做如下所示。当您在日志文件中找到特定的IP地址时发现一些奇怪的活动，并希望在进一步研究时暂时阻止该IP地址，这将很有帮助。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">BLOCK_THIS_IP=<span class="string">"192.168.1.108"</span></span><br><span class="line">iptables -A INPUT -s <span class="string">"<span class="variable">$BLOCK_THIS_IP</span>"</span> -j DROP</span><br></pre></td></tr></table></figure>
+
+<p>你也可以使用下面的一种规则。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT -i eth0 -s <span class="string">"<span class="variable">$BLOCK_THIS_IP</span>"</span> -j DROP           //规则禁止这个IP地址对我们服务器eth0网卡的所有连接</span><br><span class="line">iptables -A INPUT -i eth0 -p tcp -s <span class="string">"<span class="variable">$BLOCK_THIS_IP</span>"</span> -j DROP   //规则只禁止这个IP地址对我们服务器eth0网卡的tcp协议的连接</span><br></pre></td></tr></table></figure>
+
+<p><strong>4.允许所有传入SSH</strong></p>
+<p>以下规则允许eth0接口上的所有传入的SSH连接。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT  -i eth0 -p tcp --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -o eth0 -p tcp --sport 22 -m state --state ESTABLISHED -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>5.只能从一个特定的网络允许传入的SSH</strong></p>
+<p>下面的规则只允许从网络192.168.100.X传入SSH连接。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT  -i eth0 -p tcp -s 192.168.100.0/24 --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -o eth0 -p tcp --sport 22 -m state --state ESTABLISHED -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>6.允许传入的HTTP和HTTPS</strong></p>
+<p>以下规则允许所有传入的网络流量。即HTTP流量的端口80。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT  -i eth0 -p tcp --dport 80 -m state --state NEW,ESTABLISHED -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -o eth0 -p tcp --sport 80 -m state --state ESTABLISHED -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p>下面的规则允许所有传入安全的网络流量。即HTTPS流量的端口443。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT  -i eth0 -p tcp --dport 443 -m state --state NEW,ESTABLISHED -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -o eth0 -p tcp --sport 443 -m state --state ESTABLISHED -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>7.相结合多个规则使用多端口</strong></p>
+<p>当你不是写为每个端口单独的规则，而是从外面的世界多个端口传入的连接，可以在一起使用多端口扩展。</p>
+<p>下面的示例允许所有传入SSH，HTTP和HTTPS流量。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT  -i eth0 -p tcp -m multiport --dports 22,80,443 -m state --state NEW,ESTABLISHED -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -o eth0 -p tcp -m multiport --sports 22,80,443 -m state --state ESTABLISHED -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>8.允许OUTPUT SSH</strong></p>
+<p>以下规则允许传出ssh连接。也就是说当你从内ssh到外部服务器。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A OUTPUT -o eth0 -p tcp --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT  <span class="comment">#允许双方新建立的OUTPUT链通信</span></span><br><span class="line">iptables -A INPUT  -i eth0 -p tcp --sport 22 -m state --state ESTABLISHED -j ACCEPT      <span class="comment">#只允许双方已经建立的INPUT链通信</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>9.允许拨出SSH到特定网络</strong></p>
+<p>下面的规则只允许特定的网络传出的ssh连接。即你的SSH只有从内部网络192.168.100.0/24。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A OUTPUT -o eth0 -p tcp -d 192.168.100.0/24 --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT</span><br><span class="line">iptables -A INPUT  -i eth0 -p tcp --sport 22 -m state --state ESTABLISHED -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>10.允许拨出HTTPS</strong></p>
+<p>以下规则允许传出安全的Web流量。当你想允许互联网流量的用户，这是很有帮助。在服务器上，当你想使用wget从外部下载一些文件，这些规则也有帮助。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A OUTPUT -o eth0 -p tcp --dport 443 -m state --state NEW,ESTABLISHED -j ACCEPT</span><br><span class="line">iptables -A INPUT  -i eth0 -p tcp --sport 443 -m state --state ESTABLISHED -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p>注：对于传出HTTP Web流量，增加两个额外的规则就像上面，并改变443 80。</p>
+<p><strong>11.负载均衡传入的Web流量</strong></p>
+<p>您也可以加载使用<strong>iptables</strong>防火墙规则平衡传入的网络流量。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">This uses the iptables nth extension. The following example load balances the HTTPS traffic to three different ip-address. For every 3th packet, it is load balanced to the appropriate server (using the counter 0).</span><br><span class="line">iptables -A PREROUTING -i eth0 -p tcp --dport 443 -m state --state NEW -m nth --counter 0 --every 3 --packet 0 -j DNAT --to-destination 192.168.1.101:443</span><br><span class="line">iptables -A PREROUTING -i eth0 -p tcp --dport 443 -m state --state NEW -m nth --counter 0 --every 3 --packet 1 -j DNAT --to-destination 192.168.1.102:443</span><br><span class="line">iptables -A PREROUTING -i eth0 -p tcp --dport 443 -m state --state NEW -m nth --counter 0 --every 3 --packet 2 -j DNAT --to-destination 192.168.1.103:443</span><br></pre></td></tr></table></figure>
+
+<p><strong>12.允许从外部到内部Ping</strong></p>
+<p>以下规则允许外部用户能够ping您的服务器。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT  -p icmp --icmp-type <span class="built_in">echo</span>-request -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -p icmp --icmp-type <span class="built_in">echo</span>-reply -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>13.允许从内部到外部ping</strong></p>
+<p>以下规则允许您从内部ping到任何外部服务器。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A OUTPUT -p icmp --icmp-type <span class="built_in">echo</span>-request -j ACCEPT</span><br><span class="line">iptables -A INPUT  -p icmp --icmp-type <span class="built_in">echo</span>-reply -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>14.允许环回访问</strong></p>
+<p>您应该允许在服务器上进行完全环回访问。即使用127.0.0.1访问</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT -i lo -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -o lo -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>15.允许内部网络到外部网络</strong></p>
+<p>在防火墙服务器上，一个以太网卡连接到外部网络，另一个以太网卡连接到内部服务器，请使用以下规则允许内部网络与外部网络通信。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#在此示例中，eth1连接到外部网络（互联网），eth0连接到内部网络（例如：192.168.1.x）。</span></span><br><span class="line">iptables -A FORWARD -i eth0 -o eth1 -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>16.允许出站DNS</strong></p>
+<p>以下规则允许传出DNS连接。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A OUTPUT -p udp -o eth0 --dport 53 -j ACCEPT</span><br><span class="line">iptables -A INPUT  -p udp -i eth0 --sport 53 -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>17.允许NIS连接</strong></p>
+<p>如果您正在运行NIS（网络信息服务）来管理您的用户帐户，您应该允许NIS连接。即使允许SSH连接，如果您不允许NIS相关的ypbind连接，用户将无法登录。</p>
+<p>NIS端口是动态的。即当ypbind启动时，它分配端口。（<em>ypbind</em>是定义NIS服务器的客户端进程。）</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#首先做一个rpcinfo -p如下所示并获取端口号。在此示例中，它使用端口853和850。</span></span><br><span class="line">rpcinfo -p | grep ypbind</span><br><span class="line"></span><br><span class="line"><span class="comment">#现在允许到端口111的入站连接，以及ypbind使用的端口。</span></span><br><span class="line">iptables -A INPUT -p tcp --dport 111 -j ACCEPT</span><br><span class="line">iptables -A INPUT -p udp --dport 111 -j ACCEPT</span><br><span class="line">iptables -A INPUT -p tcp --dport 853 -j ACCEPT</span><br><span class="line">iptables -A INPUT -p udp --dport 853 -j ACCEPT</span><br><span class="line">iptables -A INPUT -p tcp --dport 850 -j ACCEPT</span><br><span class="line">iptables -A INPUT -p udp --dport 850 -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p>以上不会工作，当你重新启动ypbind，因为它在不同的时间会有不同的端口号。</p>
+<p>有两个解决方案：1）使用静态ip地址为您的NIS，或2）使用一些聪明的shell脚本技术来自动抓取动态端口号从“rpcinfo -p”命令输出，并使用上述<strong>iptables</strong>规则。</p>
+<p><strong>18.允许Rsync来自特定网络</strong></p>
+<p>以下规则仅允许来自特定网络的rsync。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT  -i eth0 -p tcp -s 192.168.101.0/24 --dport 873 -m state --state NEW,ESTABLISHED -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -o eth0 -p tcp --sport 873 -m state --state ESTABLISHED -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>19.仅允许来自特定网络的MySQL连接</strong></p>
+<p>如果你正在运行MySQL，通常你不想允许从外部直接连接。在大多数情况下，您可能在运行MySQL数据库的同一服务器上运行Web服务器。</p>
+<p>但是DBA和开发人员可能需要使用MySQL客户端从他们的笔记本电脑和桌面直接登录到MySQL。在这种情况下，您可能希望允许内部网络直接与MySQL通信，如下所示。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT  -i eth0 -p tcp -s 192.168.100.0/24 --dport 3306 -m state --state NEW,ESTABLISHED -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -o eth0 -p tcp --sport 3306 -m state --state ESTABLISHED -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>20.允许Sendmail或Postfix流量</strong></p>
+<p>以下规则允许邮件通信。它可以是sendmail或postfix。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT  -i eth0 -p tcp --dport 25 -m state --state NEW,ESTABLISHED -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -o eth0 -p tcp --sport 25 -m state --state ESTABLISHED -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>21.允许IMAP和IMAPS</strong></p>
+<p>以下规则允许IMAP / IMAP2流量。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT -i eth0 -p tcp --dport 143 -m state --state NEW,ESTABLISHED -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -o eth0 -p tcp --sport 143 -m state --state ESTABLISHED -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p>以下规则允许IMAPS流量。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT -i eth0 -p tcp --dport 993 -m state --state NEW,ESTABLISHED -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -o eth0 -p tcp --sport 993 -m state --state ESTABLISHED -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>22.允许POP3和POP3S</strong></p>
+<p>以下规则允许POP3访问。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT  -i eth0 -p tcp --dport 110 -m state --state NEW,ESTABLISHED -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -o eth0 -p tcp --sport 110 -m state --state ESTABLISHED -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p>以下规则允许POP3S访问。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT  -i eth0 -p tcp --dport 995 -m state --state NEW,ESTABLISHED -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -o eth0 -p tcp --sport 995 -m state --state ESTABLISHED -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>23.防止DoS攻击</strong></p>
+<p>以下<strong>iptables</strong>规则将帮助您防止对您的Web服务器的拒绝服务（DoS）攻击。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT -p tcp --dport 80 -m <span class="built_in">limit</span> --<span class="built_in">limit</span> 25/minute --<span class="built_in">limit</span>-burst 100 -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p>在上面的例子中：<br>　　-m limit：这使用限制<strong>iptables</strong>扩展<br>　　-limit 25 /分钟：每分钟最多只能连接25个请求包。根据您的具体要求更改此值<br>　　-limit-burst 100：此值指示仅在连接的总数达到limit之后才实施限制/分钟</p>
+<p>注意“-m limit”只匹配数据包而不是连接，所以上方例子中你将匹配25包每分钟。</p>
+<p>如果是想限制每分钟下connect次数呢。限制连接数的解决方案是使用connlimit匹配。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT -p tcp –syn –dport 80 -m connlimit –connlimit-above 15 –connlimit-mask 32 -j REJECT –reject-with tcp-reset</span><br></pre></td></tr></table></figure>
+
+<p>它将拒绝来自一个源IP的15以上的连接 - 一个很好的规则来保护Web服务器。</p>
+<p>此外，当与“hashlimit” 结合后在保护免受DDoS攻击时效果更好。</p>
+<p>使用“limit”匹配，您可以限制每个时间间隔的数据包的全局速率，但是使用“hashlimit”，您可以限制每个IP，每个组合IP +端口等。</p>
+<p>所以一个Web服务器的例子将是这样：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT -p tcp –dport 80 -m hashlimit –hashlimit 45/sec –hashlimit-burst 60 –hashlimit-mode srcip–hashlimit-name DDOS –hashlimit-htable-size 32768 –hashlimit-htable-max 32768 –hashlimit-htable-gcinterval 1000 –hashlimit-htable-expire 100000 -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>24. 端口转发</strong></p>
+<p>例：将来自422端口的流量全部转到22端口。</p>
+<p>这意味着我们既能通过422端口又能通过22端口进行ssh连接。启用DNAT转发。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t nat -A PREROUTING -p tcp -d 192.168.102.37 --dport 422 -j DNAT --to 192.168.102.37:22</span><br></pre></td></tr></table></figure>
+
+<p>除此之外，还需要允许连接到422端口的请求</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT -i eth0 -p tcp --dport 422 -m state --state NEW,ESTABLISHED -j ACCEPTiptables -A OUTPUT                   -o eth0 -p tcp --sport 422 -m state --state ESTABLISHED -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><strong>25. 记录丢弃的数据表</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">iptables -N LOGGING   <span class="comment">#1.新建名为LOGGING的链</span></span><br><span class="line">iptables -A INPUT -j LOGGING  <span class="comment">#2.将所有来自INPUT链中的数据包跳转到LOGGING链中</span></span><br><span class="line">iptables -A LOGGING -m <span class="built_in">limit</span> --<span class="built_in">limit</span> 2/min -j LOG --<span class="built_in">log</span>-prefix <span class="string">"IPTables Packet Dropped: "</span> --<span class="built_in">log</span>-level 7  <span class="comment">#3.为这些包自定义个前缀，命名为”IPTables Packet Dropped”</span></span><br><span class="line">iptables -A LOGGING -j DROP   <span class="comment">#4.丢弃这些数据包</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>26. 例子</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">[root@iZ233pgwujzZ ~]<span class="comment"># iptables-save</span></span><br><span class="line"><span class="comment"># Generated by iptables-save v1.4.7 on Wed May  6 14:27:04 2020</span></span><br><span class="line">*filter</span><br><span class="line">:INPUT ACCEPT [0:0]</span><br><span class="line">:FORWARD ACCEPT [0:0]</span><br><span class="line">:OUTPUT ACCEPT [670583527:153247221001]</span><br><span class="line"><span class="comment"># 允许指定IP访问所有服务</span></span><br><span class="line">-A INPUT -s 172.16.30.0/24 -p tcp -j ACCEPT</span><br><span class="line"><span class="comment"># 访问端口范围</span></span><br><span class="line">-A INPUT -s 192.168.40.1/32 -p tcp -m tcp --dport 1:65535 -j ACCEPT</span><br><span class="line"><span class="comment"># 意思是允许进入的数据包只能是刚刚我发出去的数据包的回应，ESTABLISHED：已建立的链接状态。RELATED：该数据包与本机发出的数据包有关。</span></span><br><span class="line">-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT </span><br><span class="line"><span class="comment"># 允许所有IP访问22端口</span></span><br><span class="line">-A INPUT -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT</span><br><span class="line"><span class="comment"># 允许icmp和io</span></span><br><span class="line">-A INPUT -p icmp -j ACCEPT </span><br><span class="line">-A INPUT -i lo -j ACCEPT </span><br><span class="line"><span class="comment"># 这两内条的意思是在INPUT表和FORWARD表中拒绝所有其他不符合上述任何一条规则的容数据包。并且发送一条host prohibited的消息给被拒绝的主机。</span></span><br><span class="line">-A INPUT -j REJECT --reject-with icmp-host-prohibited </span><br><span class="line">-A FORWARD -j REJECT --reject-with icmp-host-prohibited </span><br><span class="line">COMMIT</span><br><span class="line"><span class="comment"># Completed on Wed May  6 14:27:04 2020</span></span><br></pre></td></tr></table></figure>
+
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>版权声明： </strong>
+          本博客所有文章除特别声明外，著作权归作者所有。转载请注明出处！
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://hxqxiaoqi.gitee.io/2020/04/02/iptables常用命令/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+  <ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/iptables/">iptables</a></li></ul>
+
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2020/04/02/java进程cpu高排查/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            java进程cpu高排查
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2020/04/02/mysql 8.0 安装/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">mysql8.0 安装</div>
+      </a>
+    
+  </nav>
+
+  
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2015-2020
+        <i class="ri-heart-fill heart_icon"></i> 自在
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        
+        由 <a href="https://hexo.io" target="_blank">Hexo</a> 强力驱动
+        <span class="division">|</span>
+        主题 - <a href="https://github.com/Shen-Yu/hexo-theme-ayer" target="_blank">Ayer</a>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>访问人数:<span id="busuanzi_value_site_uv"></span>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>浏览次数:<span id="busuanzi_value_page_pv"></span></span>
+</span></span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+        <script type="text/javascript" src="https://s9.cnzz.com/z_stat.php?id=1278069914&amp;web_id=1278069914"></script>
+        
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="自在技术博客"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags/友情链接/">链接</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search" title="搜索">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <script>
+      if (window.matchMedia("(max-width: 768px)").matches) {
+        document.querySelector('.content').classList.remove('on');
+        document.querySelector('.sidebar').classList.remove('on');
+      }
+    </script>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    <script src="/js/jquery-2.0.3.min.js"></script>
+<script src="/js/lazyload.min.js"></script>
+<!-- Tocbot -->
+
+<script src="/js/tocbot.min.js"></script>
+<script>
+  tocbot.init({
+    tocSelector: '.tocbot',
+    contentSelector: '.article-entry',
+    headingSelector: 'h1, h2, h3, h4, h5, h6',
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: 'main',
+    positionFixedSelector: '.tocbot',
+    positionFixedClass: 'is-position-fixed',
+    fixedSidebarOffset: 'auto'
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css">
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+<script src="/dist/main.js"></script>
+<!-- ImageViewer -->
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script>
+
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+
+<link rel="stylesheet" href="/css/clipboard.css">
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+
+
+<!-- CanvasBackground -->
+
+
+    
+  </div>
+</body>
+
+</html>
